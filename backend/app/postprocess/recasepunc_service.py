@@ -4,6 +4,7 @@ import logging
 import threading
 import time
 
+from .. import runtime
 from ..catalog import recasepunc_available, recasepunc_dir
 from ..config import Settings
 
@@ -31,6 +32,23 @@ class RecasepuncService:
     def loading(self) -> bool:
         return self._loading
 
+    def unload(self) -> bool:
+        with self._lock:
+            if self._predictor is None:
+                return False
+            self._predictor = None
+            import gc
+
+            gc.collect()
+            try:
+                import torch
+
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except Exception:  # noqa: BLE001
+                pass
+            return True
+
     def ensure_loaded(self):
         with self._lock:
             if self._predictor is not None:
@@ -42,7 +60,7 @@ class RecasepuncService:
                 )
             from .vendor.recasepunc_official import CasePuncPredictor
 
-            device = self.settings.resolve_device()
+            device = runtime.resolve_device()
             self._loading = True
             try:
                 log.info("loading recasepunc checkpoint (device=%s)", device)
@@ -56,8 +74,8 @@ class RecasepuncService:
     def process(self, text: str) -> tuple[str, int]:
         if not text.strip():
             raise ValueError("Bitte zuerst einen Text eingeben.")
-        started = time.perf_counter()
         predictor = self.ensure_loaded()
+        started = time.perf_counter()
         with self._lock:
             output_lines = []
             for line in text.splitlines():

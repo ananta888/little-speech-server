@@ -2,6 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import {
+  DeviceResponse,
   Engine,
   HealthResponse,
   ModelsResponse,
@@ -34,6 +35,14 @@ export class ApiService {
       this.http.get<PostprocessStatus>('/api/postprocess/status'),
     );
     this.postprocessStatus.set(value);
+    return value;
+  }
+
+  async setDevice(device: 'auto' | 'cpu' | 'cuda'): Promise<DeviceResponse> {
+    const value = await firstValueFrom(
+      this.http.post<DeviceResponse>('/api/device', { device }),
+    );
+    await this.refreshHealth();
     return value;
   }
 

@@ -87,6 +87,37 @@ cd frontend && npm start
 | `LSS_CORS_ORIGINS` | `http://localhost:4300,...` | für den Dev-Server |
 | `LSS_MAX_UPLOAD_MB` | 512 | Größenlimit Upload |
 
+## GPU (optional)
+
+Standardmäßig ist CPU-torch installiert. Für den GPU-Betrieb (Whisper und
+recasepunc; Vosk bleibt CPU, das ist Kaldi-bedingt):
+
+```sh
+backend/.venv/bin/pip install 'torch==2.11.0+cu128' --index-url https://download.pytorch.org/whl/cu128
+```
+
+Der explizite Pin ist nötig: der cu128-Kanal reicht bis torch 2.11, während
+die CPU-Installation von PyPI bereits eine neuere Public-Version mitbringt –
+ohne Pin meldet pip „already satisfied“ und lässt das CPU-Build stehen. Die
+CUDA-Laufzeitbibliotheken (cuDNN, cuBLAS usw.) kommen als pip-Pakete mit; ein
+System-CUDA-Toolkit wird nicht gebraucht, nur ein passender NVIDIA-Treiber.
+Danach in der Oberfläche unter „01 · Ausführung“ zwischen **Auto / CPU / GPU**
+wechseln – der Server entlädt dabei geladene Modelle und lädt sie beim nächsten
+Einsatz auf dem neuen Gerät neu. Der Startwert kommt aus `LSS_DEVICE`
+(`auto` = GPU, falls verfügbar). Vosk bleibt CPU (Kaldi hat keine
+GPU-Unterstützung).
+
+Prüfung ohne UI:
+
+```sh
+curl -s -X POST -H 'Content-Type: application/json' -d '{"device":"cuda"}' \
+  http://127.0.0.1:8000/api/device
+# -> {"requested":"cuda","resolved":"cuda","cuda_available":true,"unloaded":[...]}
+```
+
+Bei Problemen von der Konsole aus prüfen, ob CUDA sichtbar ist:
+`backend/.venv/bin/python -c "import torch; print(torch.cuda.is_available())"`.
+
 ## Tests & Checks
 
 ```sh

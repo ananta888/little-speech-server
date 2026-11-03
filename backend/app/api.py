@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 
+from . import runtime
 from .catalog import (WHISPER_MODELS, build_recasepunc_entry,
                       build_vosk_entries, build_whisper_entries, vosk_catalog)
 from .config import get_settings
@@ -15,8 +16,9 @@ from .downloads import DownloadManager
 from .engines.vosk_engine import VoskEngine
 from .engines.whisper_engine import WhisperEngine
 from .postprocess.recasepunc_service import RecasepuncService
-from .schemas import (DownloadStatus, HealthResponse, ModelsResponse,
-                      PostprocessRequest, PostprocessResponse, TranscribeResponse)
+from .schemas import (DeviceRequest, DeviceResponse, DownloadStatus, HealthResponse,
+                      ModelsResponse, PostprocessRequest, PostprocessResponse,
+                      TranscribeResponse)
 
 router = APIRouter(prefix="/api")
 
@@ -45,13 +47,34 @@ def get_recasepunc() -> RecasepuncService:
 async def health() -> HealthResponse:
     import shutil
 
-    settings = get_settings()
     return HealthResponse(
-        device=settings.resolve_device(),
+        device=runtime.resolve_device(),
+        device_requested=runtime.requested_device(),
+        cuda=runtime.resolve_device() == "cuda",
         vosk_loaded=get_vosk_engine().loaded,
         whisper_loaded=get_whisper_engine().loaded,
         recasepunc_loaded=get_recasepunc().loaded,
         ffmpeg=bool(shutil.which("ffmpeg")),
+    )
+
+
+@router.post("/device", response_model=DeviceResponse)
+async def set_device(body: DeviceRequest) -> DeviceResponse:
+    """Rechengerät zur Laufzeit wechseln; geladene Modelle werden entladen."""
+    before = runtime.resolve_device()
+    runtime.set_device(body.device)
+    after = runtime.resolve_device()
+    unloaded: list[str] = []
+    if before != after:
+        if get_whisper_engine().unload():
+            unloaded.append("whisper")
+        if get_recasepunc().unload():
+            unloaded.append("recasepunc")
+    return DeviceResponse(
+        requested=runtime.requested_device(),
+        resolved=after,
+        cuda_available=runtime.resolve_device() == "cuda",
+        unloaded=unloaded,
     )
 
 
@@ -63,7 +86,7 @@ async def models() -> ModelsResponse:
         vosk=build_vosk_entries(settings, statuses),
         whisper=build_whisper_entries(settings, statuses),
         recasepunc=build_recasepunc_entry(settings, statuses),
-        device=settings.resolve_device(),
+        device=runtime.resolve_device(),
         models_dir=str(settings.models_dir),
     )
 
@@ -155,7 +178,7 @@ async def postprocess_status() -> dict:
         "available": recasepunc_available(settings),
         "loaded": service.loaded,
         "loading": service.loading,
-        "device": settings.resolve_device(),
+        "device": runtime.resolve_device(),
     }
 
 

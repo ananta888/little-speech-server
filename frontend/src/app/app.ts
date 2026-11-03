@@ -19,6 +19,7 @@ export class App implements OnInit, OnDestroy {
   readonly engine = signal<Engine>('vosk');
   readonly voskModel = signal('');
   readonly whisperModel = signal('base');
+  readonly device = signal<'auto' | 'cpu' | 'cuda'>('auto');
   readonly status = signal('Modell wählen, dann transkribieren.');
   readonly error = signal('');
   readonly busy = signal<'idle' | 'upload' | 'post'>('idle');
@@ -113,6 +114,16 @@ export class App implements OnInit, OnDestroy {
 
   readonly isRecording = computed(() => this.stream.state() !== 'idle');
 
+  readonly gpuAvailable = computed(() => this.api.health()?.cuda === true);
+
+  readonly activeDeviceLabel = computed(() => {
+    const health = this.api.health();
+    if (!health) {
+      return '…';
+    }
+    return health.device === 'cuda' ? 'GPU (CUDA)' : 'CPU';
+  });
+
   async ngOnInit(): Promise<void> {
     try {
       const models = await this.api.refreshModels();
@@ -127,10 +138,40 @@ export class App implements OnInit, OnDestroy {
       void this.fail(error, 'Modellliste konnte nicht geladen werden.');
     }
     try {
-      await this.api.refreshHealth();
+      const health = await this.api.refreshHealth();
+      this.device.set(
+        health.device_requested === 'cpu' || health.device_requested === 'cuda'
+          ? health.device_requested
+          : 'auto',
+      );
       await this.api.refreshPostprocess();
     } catch {
       /* Status ist optional */
+    }
+  }
+
+  async changeDevice(value: 'auto' | 'cpu' | 'cuda'): Promise<void> {
+    if (this.busy() !== 'idle' || this.isRecording()) {
+      return;
+    }
+    this.device.set(value);
+    this.error.set('');
+    try {
+      const result = await this.api.setDevice(value);
+      await this.api.refreshModels();
+      const label = result.resolved === 'cuda' ? 'GPU (CUDA)' : 'CPU';
+      let message = `Ausführung: ${result.requested} → aktiv: ${label}.`;
+      if (value === 'cuda' && result.resolved !== 'cuda') {
+        message += ' CUDA ist auf dem Server nicht verfügbar – es bleibt bei der CPU.';
+      }
+      if (result.unloaded.length) {
+        message += ` ${result.unloaded.join(' und ')} entladen; geladene Modelle werden beim nächsten Einsatz neu geladen.`;
+      }
+      this.status.set(message);
+    } catch (error) {
+      void this.fail(error, 'Gerät konnte nicht gewechselt werden.');
+      const requested = this.api.health()?.device_requested ?? 'auto';
+      this.device.set(requested === 'cpu' || requested === 'cuda' ? requested : 'auto');
     }
   }
 

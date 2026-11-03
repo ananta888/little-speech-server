@@ -148,3 +148,23 @@ def test_ffmpeg_available_for_uploads():
     import shutil
 
     assert shutil.which("ffmpeg"), "ffmpeg wird für Datei-Uploads gebraucht"
+
+
+def test_device_switch_and_validation():
+    with TestClient(app) as client:
+        response = client.post("/api/device", json={"device": "cpu"})
+        assert response.status_code == 200, response.text
+        assert response.json()["resolved"] == "cpu"
+        assert response.json()["unloaded"] in ([], ["whisper"], ["recasepunc"], ["whisper", "recasepunc"])
+
+        response = client.post("/api/device", json={"device": "auto"})
+        assert response.status_code == 200
+        assert response.json()["requested"] == "auto"
+
+        # 'gpu' ist kein gültiger Wert – die UI bietet 'cuda' an
+        assert client.post("/api/device", json={"device": "gpu"}).status_code == 422
+
+        health = client.get("/api/health").json()
+        assert health["device_requested"] == "auto"
+        assert health["device"] in ("cpu", "cuda")
+        assert isinstance(health["cuda"], bool)

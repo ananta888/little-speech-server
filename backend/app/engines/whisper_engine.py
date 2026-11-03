@@ -3,12 +3,26 @@
 import logging
 import threading
 
+from .. import runtime
 from ..catalog import WHISPER_MODELS, whisper_available, whisper_dir
 from ..config import Settings
 
 log = logging.getLogger("lss.whisper")
 
 CHUNK_SAMPLES = 64_000  # 4 s @ 16 kHz für den Live-Stream
+
+
+def _free_accelerator_memory() -> None:
+    import gc
+
+    gc.collect()
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:  # noqa: BLE001
+        pass
 
 
 class ModelNotAvailable(RuntimeError):
@@ -33,13 +47,22 @@ class WhisperEngine:
     def loaded(self) -> str | None:
         return self._model_id
 
+    def unload(self) -> bool:
+        with self._lock:
+            if self._model is None:
+                return False
+            self._model = None
+            self._model_id = None
+            _free_accelerator_memory()
+            return True
+
     def ensure_loaded(self, model_id: str):
         with self._lock:
             if self._model is not None and self._model_id == model_id:
                 return self._model
             from faster_whisper import WhisperModel
 
-            device = self.settings.resolve_device()
+            device = runtime.resolve_device()
             compute_type = "int8_float16" if device == "cuda" else "int8"
             local = whisper_dir(self.settings, model_id)
             source = str(local) if whisper_available(self.settings, model_id) else _hf_id(model_id)

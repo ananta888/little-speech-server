@@ -30,10 +30,19 @@ export interface ModelsResponse {
 export interface HealthResponse {
   ok: boolean;
   device: string;
+  device_requested: string;
+  cuda: boolean;
   vosk_loaded: string | null;
   whisper_loaded: string | null;
   recasepunc_loaded: boolean;
   ffmpeg: boolean;
+}
+
+export interface DeviceResponse {
+  requested: string;
+  resolved: string;
+  cuda_available: boolean;
+  unloaded: string[];
 }
 
 export interface Word {

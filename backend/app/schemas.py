@@ -77,7 +77,20 @@ class DownloadStatus(BaseModel):
 class HealthResponse(BaseModel):
     ok: bool = True
     device: str
+    device_requested: str = "auto"
+    cuda: bool = False
     vosk_loaded: str | None = None
     whisper_loaded: str | None = None
     recasepunc_loaded: bool = False
     ffmpeg: bool = False
+
+
+class DeviceRequest(BaseModel):
+    device: Literal["auto", "cpu", "cuda"]
+
+
+class DeviceResponse(BaseModel):
+    requested: str
+    resolved: str
+    cuda_available: bool
+    unloaded: list[str] = Field(default_factory=list)

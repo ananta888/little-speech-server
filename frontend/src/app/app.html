@@ -42,6 +42,20 @@
           </p>
         }
       </div>
+      <div>
+        <label for="device">Ausführung</label>
+        <select id="device" [ngModel]="device()" (ngModelChange)="changeDevice($event)"
+                [disabled]="isRecording() || busy() !== 'idle'">
+          <option value="auto">Auto (GPU, wenn verfügbar)</option>
+          <option value="cpu">CPU</option>
+          <option value="cuda" [disabled]="!gpuAvailable()">GPU (CUDA)</option>
+        </select>
+        <p class="hint spaced">
+          Aktuell aktiv: <strong>{{ activeDeviceLabel() }}</strong>.
+          Vosk rechnet immer auf der CPU; die GPU beschleunigt Whisper und die
+          Zeichensetzung. Bei einem Wechsel werden geladene Modelle entladen und neu geladen.
+        </p>
+      </div>
     </div>
 
     <div class="row">
@@ -193,7 +207,7 @@
         </p>
         <ul class="hint facts">
           <li>ffmpeg: {{ api.health()?.ffmpeg ? 'vorhanden' : 'fehlt – bitte installieren (Pflicht für Datei-Upload)' }}</li>
-          <li>Gerät: {{ api.health()?.device ?? '…' }}</li>
+          <li>Gerät: {{ activeDeviceLabel() }} (gewählt: {{ api.health()?.device_requested ?? '…' }})</li>
           <li>Vosk-Modell im Speicher: {{ api.health()?.vosk_loaded ?? 'keins' }}</li>
           <li>Whisper-Modell im Speicher: {{ api.health()?.whisper_loaded ?? 'keins' }}</li>
           <li>recasepunc geladen: {{ api.health()?.recasepunc_loaded ? 'ja' : 'nein' }}</li>
