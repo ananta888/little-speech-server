@@ -1,0 +1,807 @@
+{
+  "source": "https://alphacephei.com/vosk/models",
+  "checkedAt": "2026-11-03",
+  "sourceSha256": "54ea4c1e367e18a67e8f4fce6232de62e5a467f8ec094266be7650efa1d7e77a",
+  "models": [
+    {
+      "id": "vosk-model-small-en-us-0.15",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip",
+      "language": "Englisch",
+      "size": "40M",
+      "bytes": 40000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-en-us-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-en-us-0.22.zip",
+      "language": "Englisch",
+      "size": "1.8G",
+      "bytes": 1800000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-en-us-0.22-lgraph",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-en-us-0.22-lgraph.zip",
+      "language": "Englisch",
+      "size": "128M",
+      "bytes": 128000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-en-us-0.42-gigaspeech",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-en-us-0.42-gigaspeech.zip",
+      "language": "Englisch",
+      "size": "2.3G",
+      "bytes": 2300000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-en-us-daanzu-20200905",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-en-us-daanzu-20200905.zip",
+      "language": "Englisch",
+      "size": "1.0G",
+      "bytes": 1000000000.0,
+      "license": "AGPL",
+      "kind": "speech",
+      "older": true
+    },
+    {
+      "id": "vosk-model-en-us-daanzu-20200905-lgraph",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-en-us-daanzu-20200905-lgraph.zip",
+      "language": "Englisch",
+      "size": "129M",
+      "bytes": 129000000.0,
+      "license": "AGPL",
+      "kind": "speech",
+      "older": true
+    },
+    {
+      "id": "vosk-model-en-us-librispeech-0.2",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-en-us-librispeech-0.2.zip",
+      "language": "Englisch",
+      "size": "845M",
+      "bytes": 845000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": true
+    },
+    {
+      "id": "vosk-model-small-en-us-zamia-0.5",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-en-us-zamia-0.5.zip",
+      "language": "Englisch",
+      "size": "49M",
+      "bytes": 49000000.0,
+      "license": "LGPL-3.0",
+      "kind": "speech",
+      "older": true
+    },
+    {
+      "id": "vosk-model-en-us-aspire-0.2",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-en-us-aspire-0.2.zip",
+      "language": "Englisch",
+      "size": "1.4G",
+      "bytes": 1400000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": true
+    },
+    {
+      "id": "vosk-model-en-us-0.21",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-en-us-0.21.zip",
+      "language": "Englisch",
+      "size": "1.6G",
+      "bytes": 1600000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": true
+    },
+    {
+      "id": "vosk-model-en-in-0.5",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-en-in-0.5.zip",
+      "language": "Englisch (Indien)",
+      "size": "1G",
+      "bytes": 1000000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-en-in-0.4",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-en-in-0.4.zip",
+      "language": "Englisch (Indien)",
+      "size": "36M",
+      "bytes": 36000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-cn-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip",
+      "language": "Chinesisch",
+      "size": "42M",
+      "bytes": 42000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-cn-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-cn-0.22.zip",
+      "language": "Chinesisch",
+      "size": "1.3G",
+      "bytes": 1300000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-cn-kaldi-multicn-0.15",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-cn-kaldi-multicn-0.15.zip",
+      "language": "Chinesisch",
+      "size": "1.5G",
+      "bytes": 1500000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": true
+    },
+    {
+      "id": "vosk-model-ru-0.42",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-ru-0.42.zip",
+      "language": "Russisch",
+      "size": "1.8G",
+      "bytes": 1800000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-ru-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-ru-0.22.zip",
+      "language": "Russisch",
+      "size": "45M",
+      "bytes": 45000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-ru-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-ru-0.22.zip",
+      "language": "Russisch",
+      "size": "1.5G",
+      "bytes": 1500000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": true
+    },
+    {
+      "id": "vosk-model-ru-0.10",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-ru-0.10.zip",
+      "language": "Russisch",
+      "size": "2.5G",
+      "bytes": 2500000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": true
+    },
+    {
+      "id": "vosk-model-small-fr-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-fr-0.22.zip",
+      "language": "Französisch",
+      "size": "41M",
+      "bytes": 41000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-fr-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-fr-0.22.zip",
+      "language": "Französisch",
+      "size": "1.4G",
+      "bytes": 1400000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-fr-pguyot-0.3",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-fr-pguyot-0.3.zip",
+      "language": "Französisch",
+      "size": "39M",
+      "bytes": 39000000.0,
+      "license": "CC-BY-NC-SA 4.0",
+      "kind": "speech",
+      "older": true
+    },
+    {
+      "id": "vosk-model-fr-0.6-linto-2.2.0",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-fr-0.6-linto-2.2.0.zip",
+      "language": "Französisch",
+      "size": "1.5G",
+      "bytes": 1500000000.0,
+      "license": "AGPL",
+      "kind": "speech",
+      "older": true
+    },
+    {
+      "id": "vosk-model-de-0.21",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-de-0.21.zip",
+      "language": "Deutsch",
+      "size": "1.9G",
+      "bytes": 1900000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-de-tuda-0.6-900k",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-de-tuda-0.6-900k.zip",
+      "language": "Deutsch",
+      "size": "4.4G",
+      "bytes": 4400000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-de-zamia-0.3",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-de-zamia-0.3.zip",
+      "language": "Deutsch",
+      "size": "49M",
+      "bytes": 49000000.0,
+      "license": "LGPL-3.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-de-0.15",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-de-0.15.zip",
+      "language": "Deutsch",
+      "size": "45M",
+      "bytes": 45000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-es-0.42",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip",
+      "language": "Spanisch",
+      "size": "39M",
+      "bytes": 39000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-es-0.42",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-es-0.42.zip",
+      "language": "Spanisch",
+      "size": "1.4G",
+      "bytes": 1400000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-pt-0.3",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-pt-0.3.zip",
+      "language": "Portugiesisch",
+      "size": "31M",
+      "bytes": 31000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-pt-fb-v0.1.1-20220516_2113",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-pt-fb-v0.1.1-20220516_2113.zip",
+      "language": "Portugiesisch",
+      "size": "1.6G",
+      "bytes": 1600000000.0,
+      "license": "GPLv3.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-el-gr-0.7",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-el-gr-0.7.zip",
+      "language": "Griechisch",
+      "size": "1.1G",
+      "bytes": 1100000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-tr-0.3",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-tr-0.3.zip",
+      "language": "Türkisch",
+      "size": "35M",
+      "bytes": 35000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-vn-0.4",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-vn-0.4.zip",
+      "language": "Vietnamesisch",
+      "size": "32M",
+      "bytes": 32000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-vn-0.4",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-vn-0.4.zip",
+      "language": "Vietnamesisch",
+      "size": "78M",
+      "bytes": 78000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-it-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-it-0.22.zip",
+      "language": "Italienisch",
+      "size": "48M",
+      "bytes": 48000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-it-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-it-0.22.zip",
+      "language": "Italienisch",
+      "size": "1.2G",
+      "bytes": 1200000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-nl-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-nl-0.22.zip",
+      "language": "Niederländisch",
+      "size": "39M",
+      "bytes": 39000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-nl-spraakherkenning-0.6",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-nl-spraakherkenning-0.6.zip",
+      "language": "Niederländisch",
+      "size": "860M",
+      "bytes": 860000000.0,
+      "license": "CC-BY-NC-SA",
+      "kind": "speech",
+      "older": true
+    },
+    {
+      "id": "vosk-model-nl-spraakherkenning-0.6-lgraph",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-nl-spraakherkenning-0.6-lgraph.zip",
+      "language": "Niederländisch",
+      "size": "100M",
+      "bytes": 100000000.0,
+      "license": "CC-BY-NC-SA",
+      "kind": "speech",
+      "older": true
+    },
+    {
+      "id": "vosk-model-small-ca-0.4",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-ca-0.4.zip",
+      "language": "Katalanisch",
+      "size": "42M",
+      "bytes": 42000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-ar-mgb2-0.4",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-ar-mgb2-0.4.zip",
+      "language": "Arabisch",
+      "size": "318M",
+      "bytes": 318000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-ar-0.22-linto-1.1.0",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-ar-0.22-linto-1.1.0.zip",
+      "language": "Arabisch",
+      "size": "1.3G",
+      "bytes": 1300000000.0,
+      "license": "AGPL",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-ar-tn-0.1-linto",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-ar-tn-0.1-linto.zip",
+      "language": "Arabisch (Tunesien)",
+      "size": "158M",
+      "bytes": 158000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-ar-tn-0.1-linto",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-ar-tn-0.1-linto.zip",
+      "language": "Arabisch (Tunesien)",
+      "size": "517M",
+      "bytes": 517000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-fa-0.42",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-fa-0.42.zip",
+      "language": "Persisch",
+      "size": "1.6G",
+      "bytes": 1600000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-fa-0.42",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-fa-0.42.zip",
+      "language": "Persisch",
+      "size": "53M",
+      "bytes": 53000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-fa-0.5",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-fa-0.5.zip",
+      "language": "Persisch",
+      "size": "1G",
+      "bytes": 1000000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": true
+    },
+    {
+      "id": "vosk-model-small-fa-0.5",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-fa-0.5.zip",
+      "language": "Persisch",
+      "size": "60M",
+      "bytes": 60000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": true
+    },
+    {
+      "id": "vosk-model-tl-ph-generic-0.6",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-tl-ph-generic-0.6.zip",
+      "language": "Filipino",
+      "size": "320M",
+      "bytes": 320000000.0,
+      "license": "CC-BY-NC-SA 4.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-uk-v3-nano",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-uk-v3-nano.zip",
+      "language": "Ukrainisch",
+      "size": "73M",
+      "bytes": 73000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-uk-v3-small",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-uk-v3-small.zip",
+      "language": "Ukrainisch",
+      "size": "133M",
+      "bytes": 133000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-uk-v3",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-uk-v3.zip",
+      "language": "Ukrainisch",
+      "size": "343M",
+      "bytes": 343000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-uk-v3-lgraph",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-uk-v3-lgraph.zip",
+      "language": "Ukrainisch",
+      "size": "325M",
+      "bytes": 325000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-kz-0.42",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-kz-0.42.zip",
+      "language": "Kasachisch",
+      "size": "58M",
+      "bytes": 58000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-kz-0.42",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-kz-0.42.zip",
+      "language": "Kasachisch",
+      "size": "1.3G",
+      "bytes": 1300000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-sv-rhasspy-0.15",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-sv-rhasspy-0.15.zip",
+      "language": "Schwedisch",
+      "size": "289M",
+      "bytes": 289000000.0,
+      "license": "MIT",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-ja-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-ja-0.22.zip",
+      "language": "Japanisch",
+      "size": "48M",
+      "bytes": 48000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-ja-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-ja-0.22.zip",
+      "language": "Japanisch",
+      "size": "1Gb",
+      "bytes": 1000000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-eo-0.42",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-eo-0.42.zip",
+      "language": "Esperanto",
+      "size": "42M",
+      "bytes": 42000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-hi-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-hi-0.22.zip",
+      "language": "Hindi",
+      "size": "42M",
+      "bytes": 42000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-hi-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-hi-0.22.zip",
+      "language": "Hindi",
+      "size": "1.5Gb",
+      "bytes": 1500000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-cs-0.4-rhasspy",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-cs-0.4-rhasspy.zip",
+      "language": "Tschechisch",
+      "size": "44M",
+      "bytes": 44000000.0,
+      "license": "MIT",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-pl-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-pl-0.22.zip",
+      "language": "Polnisch",
+      "size": "50M",
+      "bytes": 50000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-uz-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-uz-0.22.zip",
+      "language": "Usbekisch",
+      "size": "49M",
+      "bytes": 49000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-ko-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-ko-0.22.zip",
+      "language": "Koreanisch",
+      "size": "82M",
+      "bytes": 82000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-br-0.8",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-br-0.8.zip",
+      "language": "Bretonisch",
+      "size": "70M",
+      "bytes": 70000000.0,
+      "license": "MIT license",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-gu-0.42",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-gu-0.42.zip",
+      "language": "Gujarati",
+      "size": "700M",
+      "bytes": 700000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-gu-0.42",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-gu-0.42.zip",
+      "language": "Gujarati",
+      "size": "100M",
+      "bytes": 100000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-tg-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-tg-0.22.zip",
+      "language": "Tadschikisch",
+      "size": "327M",
+      "bytes": 327000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-tg-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-tg-0.22.zip",
+      "language": "Tadschikisch",
+      "size": "50M",
+      "bytes": 50000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-te-0.42",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-te-0.42.zip",
+      "language": "Telugu",
+      "size": "58M",
+      "bytes": 58000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-ky-0.42",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-ky-0.42.zip",
+      "language": "Kirgisisch",
+      "size": "49M",
+      "bytes": 49000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-ky-0.42",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-ky-0.42.zip",
+      "language": "Kirgisisch",
+      "size": "1.1G",
+      "bytes": 1100000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-small-ka-0.42",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-small-ka-0.42.zip",
+      "language": "Georgisch",
+      "size": "45M",
+      "bytes": 45000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-ka-0.42",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-ka-0.42.zip",
+      "language": "Georgisch",
+      "size": "700M",
+      "bytes": 700000000.0,
+      "license": "Apache 2.0",
+      "kind": "speech",
+      "older": false
+    },
+    {
+      "id": "vosk-model-spk-0.4",
+      "url": "https://alphacephei.com/vosk/models/vosk-model-spk-0.4.zip",
+      "language": "Sprechererkennung",
+      "size": "13M",
+      "bytes": 13000000.0,
+      "license": "Apache 2.0",
+      "kind": "speaker",
+      "older": false
+    },
+    {
+      "id": "vosk-recasepunc-en-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-recasepunc-en-0.22.zip",
+      "language": "Englisch",
+      "size": "1.6G",
+      "bytes": 1600000000.0,
+      "license": "Apache 2.0",
+      "kind": "punctuation",
+      "older": false
+    },
+    {
+      "id": "vosk-recasepunc-ru-0.22",
+      "url": "https://alphacephei.com/vosk/models/vosk-recasepunc-ru-0.22.zip",
+      "language": "Russisch",
+      "size": "1.6G",
+      "bytes": 1600000000.0,
+      "license": "Apache 2.0",
+      "kind": "punctuation",
+      "older": false
+    },
+    {
+      "id": "vosk-recasepunc-de-0.21",
+      "url": "https://alphacephei.com/vosk/models/vosk-recasepunc-de-0.21.zip",
+      "language": "Deutsch",
+      "size": "1.1G",
+      "bytes": 1100000000.0,
+      "license": "Apache 2.0",
+      "kind": "punctuation",
+      "older": false
+    }
+  ]
+}

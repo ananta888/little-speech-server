@@ -1,0 +1,14 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+pydantic-settings>=2.4
+vosk>=0.3.45
+faster-whisper>=1.0
+# av 16+ entfernt das metadata_errors-Argument, das faster-whisper noch nutzt
+av<16
+torch>=2.2
+transformers>=4.44,<5
+regex
+tqdm
+numpy
+huggingface_hub>=0.24

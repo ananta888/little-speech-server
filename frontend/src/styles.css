@@ -1,0 +1,65 @@
+/* Farben, Typografie und Layout-Bausteine – wie die little-speech-HTML. */
+:root {
+  color-scheme: light dark;
+  --bg: #f7f8f4;
+  --surface: #fff;
+  --soft: #eef2e9;
+  --ink: #25382e;
+  --muted: #566450;
+  --line: #d8dfd1;
+  --accent: #294e3b;
+  --hover: #203f30;
+  --on-accent: #fff;
+  --danger: #963b26;
+  --danger-bg: #fff0e8;
+  --radius: 12px;
+  --field-radius: 8px;
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s6: 24px;
+  --s8: 32px;
+  --small: 14px;
+  --body: 16px;
+  --heading: 20px;
+  --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #171e19;
+    --surface: #202b23;
+    --soft: #29372c;
+    --ink: #edf3e9;
+    --muted: #b5c5af;
+    --line: #465541;
+    --accent: #bcd9ae;
+    --hover: #d1e8c7;
+    --on-accent: #1b3022;
+    --danger: #ffc1a8;
+    --danger-bg: #442d25;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  font: var(--body) / 1.6 var(--font);
+  color: var(--ink);
+  background: var(--bg);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}

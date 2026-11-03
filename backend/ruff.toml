@@ -1,0 +1,5 @@
+line-length = 120
+extend-exclude = ["app/postprocess/vendor"]
+
+[lint]
+select = ["F", "E"]

@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+node_modules/
+dist/
+.angular/
+models/
+!models/.gitkeep
+backend/.pytest_cache/
+backend/.ruff_cache/
+*.log
+.env

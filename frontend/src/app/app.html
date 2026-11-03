@@ -1,0 +1,216 @@
+<header class="top">
+  <div class="brand">little speech <span>· Server</span></div>
+  <div class="badge">Vosk · Whisper · recasepunc – lokal</div>
+</header>
+
+<main>
+  <section class="panel" aria-labelledby="engine-title">
+    <h2 id="engine-title">01 · Engine &amp; Modell</h2>
+    <div class="grid">
+      <div>
+        <label for="engine">Engine</label>
+        <select id="engine" [ngModel]="engine()" (ngModelChange)="engine.set($event)" [disabled]="isRecording()">
+          <option value="vosk">Vosk · sparsame Live-Erkennung</option>
+          <option value="whisper">Whisper · Abschnitte, genauer</option>
+        </select>
+        <p class="hint spaced">
+          {{ engine() === 'vosk'
+            ? 'Vosk erkennt fortlaufend mit kurzem Audiobuffer auf der CPU. Große Modelle sind genauer, brauchen aber Speicher und Ladezeit.'
+            : 'Whisper transkribiert Abschnitte (Live in ~4-s-Stücken, Dateien komplett). Modelle kommen beim ersten Laden von Hugging Face.' }}
+        </p>
+      </div>
+      <div>
+        <label for="model">Modell</label>
+        <select id="model" [ngModel]="engine() === 'vosk' ? voskModel() : whisperModel()"
+                (ngModelChange)="engine() === 'vosk' ? voskModel.set($event) : whisperModel.set($event)"
+                [disabled]="isRecording()">
+          @for (group of groups(); track group.name) {
+            <optgroup [label]="groupLabel(group)">
+              @for (entry of group.options; track entry.id) {
+                <option [value]="entry.id" [disabled]="entry.kind !== 'speech'">{{ optionLabel(entry) }}</option>
+              }
+            </optgroup>
+          }
+        </select>
+        @if (selected(); as model) {
+          <p class="hint spaced">
+            {{ model.name }}
+            @if (model.size) { · Download {{ model.size }} }
+            @if (model.license) { · Lizenz {{ model.license }} }
+            {{ model.note ? '· ' + model.note : '' }}
+            {{ model.available ? '· bereit' : '· nicht geladen' }}
+          </p>
+        }
+      </div>
+    </div>
+
+    <div class="row">
+      @if (selected(); as model) {
+        @if (model.kind === 'speech' && !model.available && !model.downloading) {
+          <button class="primary" (click)="downloadSelected()">Herunterladen</button>
+        }
+        @if (model.downloading) {
+          <button (click)="stopDownload()">Download abbrechen</button>
+          <span class="hint">
+            {{ model.percent !== null ? model.percent + ' %' : '…' }}
+            @if (model.downloaded && model.download_total) {
+              · {{ (model.downloaded / 1000000).toFixed(0) }} von {{ (model.download_total / 1000000).toFixed(0) }} MB
+            }
+          </span>
+        }
+      }
+      @if (hasDownloading()) {
+        <span class="hint">Ein Download läuft im Hintergrund; die Liste aktualisiert sich automatisch.</span>
+      }
+    </div>
+    @if (selected(); as model) {
+      @if (model.downloading) {
+        <progress class="spaced" [value]="model.percent ?? 0" max="100" aria-label="Download-Fortschritt"></progress>
+      }
+    }
+    <p class="hint spaced">
+      Modellverzeichnis des Servers: <code>{{ api.models()?.models_dir ?? '…' }}</code>
+      · Rechengerät: <strong>{{ api.models()?.device ?? api.health()?.device ?? '…' }}</strong>
+    </p>
+    <p id="status" class="status spaced" role="status" aria-live="polite">{{ status() }}</p>
+    @if (error()) {
+      <p class="status error" role="alert">{{ error() }}</p>
+    }
+  </section>
+
+  <section class="panel" aria-labelledby="audio-title">
+    <h2 id="audio-title">02 · Audio</h2>
+    <div class="grid">
+      <div>
+        <label for="audio-file">Audiodatei transkribieren</label>
+        <input id="audio-file" type="file" accept="audio/*,video/*" #fileInput
+               (change)="onFileSelected($event, fileInput)" [disabled]="isRecording() || busy() !== 'idle'">
+        <div class="row spaced">
+          <button class="primary" [disabled]="!canWork() || !selectedFileSignal()"
+                  (click)="transcribeFile()">Transkribieren</button>
+          @if (selectedFileSignal(); as file) {
+            <span class="hint">{{ file.name }} · {{ (file.size / 1000000).toFixed(1) }} MB</span>
+          }
+        </div>
+        @if (selected(); as model) {
+          @if (model.engine === 'vosk' && !model.available && !model.downloading) {
+            <p class="hint">Für die Transkribierung zuerst das Modell in01 herunterladen.</p>
+          }
+        }
+      </div>
+      <div>
+        <label>Live vom Mikrofon</label>
+        <div class="row">
+          @if (!isRecording()) {
+            <button class="primary" [disabled]="!canWork()" (click)="toggleRecording()">Aufnahme starten</button>
+          } @else {
+            <button class="danger" (click)="toggleRecording()">Beenden</button>
+          }
+        </div>
+        <p class="hint spaced">
+          Der Ton bleibt im Browser und wird als PCM-Strom an den Server gesendet; dort entsteht das Transkript.
+          Mikrofonfreigabe braucht HTTPS oder localhost.{{ engine() === 'whisper' ? ' Whisper liefert Ergebnis pro ~4-Sekunden-Abschnitt.' : '' }}
+        </p>
+        @if (partial()) {
+          <p class="partial spaced">… {{ partial() }}</p>
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="transcript-title">
+    <h2 id="transcript-title">03 · Transkript</h2>
+    <label for="transcript">Transkript · bearbeitbar</label>
+    <textarea id="transcript" rows="10" placeholder="Hier erscheint das Transkript …"
+              [ngModel]="transcript()" (ngModelChange)="transcript.set($event)"
+              [readonly]="busy() !== 'idle' || isRecording()"></textarea>
+    @if (info()) {
+      <p class="hint spaced">{{ info() }}</p>
+    }
+    <div class="row spaced">
+      <button class="primary" [disabled]="!transcript().trim() || busy() !== 'idle'"
+              title="recasepunc (deutsches BERT) zieht Großschreibung und Satzzeichen nach"
+              (click)="recasepunc()">Zeichensetzung nachziehen</button>
+      @if (backup() !== null) {
+        <button [disabled]="busy() !== 'idle'" (click)="restore()">Wiederherstellen</button>
+      }
+      <button [disabled]="!transcript().trim() || busy() !== 'idle'" (click)="copyOutput()">Kopieren</button>
+      <button [disabled]="!transcript().trim() || busy() !== 'idle'" (click)="saveTxt()">TXT</button>
+      <button [disabled]="!transcript().trim() || busy() !== 'idle'" (click)="saveSrt()">SRT</button>
+      <button [disabled]="!transcript().trim() || busy() !== 'idle' || isRecording()" (click)="clearTranscript()">Leeren</button>
+    </div>
+    @if (api.postprocessStatus(); as post) {
+      <p class="hint spaced">
+        recasepunc:
+        @if (!post.available) {
+          Modell noch nicht geladen (ca. 1,1 G) –
+          <button class="link" (click)="downloadRecasepunc()">herunterladen</button>
+        } @else if (post.loaded) {
+          bereit, Gerät {{ post.device }}
+        } @else {
+          vorhanden, wird beim ersten Klick geladen (ca. {{ post.device === 'cuda' ? '5 s auf der GPU' : '6 s auf der CPU' }}) · Gerät {{ post.device }}
+        }
+      </p>
+    }
+    <p class="hint">
+      recasepunc ist ein Nachbearbeitungs-Modell: es ändert nur Schreibweise und Satzzeichen, erfindet aber nichts.
+      Trotzdem bitte Namen, Zahlen und Termine gegenprüfen.
+    </p>
+
+    @if (words().length) {
+      <details class="spaced">
+        <summary>Wörter, Zeiten &amp; Konfidenz ({{ words().length }})</summary>
+        <p class="hint">Werte unter 0,70 sind hervorgehoben – Hinweise, keine garantierte Trefferquote.</p>
+        <div class="words">
+          @for (word of words(); track $index) {
+            <span class="word" [class.low]="isLowConfidence(word)"
+                  [title]="word.start.toFixed(2) + '–' + word.end.toFixed(2) + ' s' + (word.conf !== null ? ' · ' + word.conf.toFixed(2) : '')">
+              {{ word.word }}
+            </span>
+          }
+        </div>
+      </details>
+    }
+    @if (segments().length) {
+      <details class="spaced">
+        <summary>Abschnitte &amp; Zeiten ({{ segments().length }})</summary>
+        <ol class="segments">
+          @for (segment of segments(); track $index) {
+            <li><span class="time">{{ segment.start.toFixed(1) }}–{{ segment.end.toFixed(1) }} s</span> {{ segment.text }}</li>
+          }
+        </ol>
+      </details>
+    }
+  </section>
+
+  <section class="panel" aria-labelledby="info-title">
+    <h2 id="info-title">04 · Server &amp; Hinweise</h2>
+    <div class="grid">
+      <div>
+        <p class="hint">
+          Kein Fremd-Dienst: FastAPI und die Engines laufen lokal; das Angular-Frontend wird vom selben Server
+          ausgeliefert. Audio wird nicht hochgeladen, nur verarbeitet.
+        </p>
+        <ul class="hint facts">
+          <li>ffmpeg: {{ api.health()?.ffmpeg ? 'vorhanden' : 'fehlt – bitte installieren (Pflicht für Datei-Upload)' }}</li>
+          <li>Gerät: {{ api.health()?.device ?? '…' }}</li>
+          <li>Vosk-Modell im Speicher: {{ api.health()?.vosk_loaded ?? 'keins' }}</li>
+          <li>Whisper-Modell im Speicher: {{ api.health()?.whisper_loaded ?? 'keins' }}</li>
+          <li>recasepunc geladen: {{ api.health()?.recasepunc_loaded ? 'ja' : 'nein' }}</li>
+        </ul>
+      </div>
+      <div>
+        <details>
+          <summary>Modelle &amp; Lizenzen</summary>
+          <p class="hint">
+            Vosk-Modelle und das recasepunc-Modell: Apache 2.0, Quelle alphacephei.com/vosk/models.
+            Der recasepunc-Checkpoint steckt in einem offiziellen Archiv und wird per PyTorch geladen;
+            zugrunde liegt das Projekt benob/recasepunc mit dbmdz/bert-base-german-uncased (MIT).
+            Whisper-Modelle: Systran/faster-whisper (MIT). Downloads speichern sich im Modellverzeichnis
+            des Servers und wiederverwendbar.
+          </p>
+        </details>
+      </div>
+    </div>
+  </section>
+</main>
