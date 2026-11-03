@@ -20,6 +20,10 @@ export class App implements OnInit, OnDestroy {
   readonly voskModel = signal('');
   readonly whisperModel = signal('base');
   readonly device = signal<'auto' | 'cpu' | 'cuda'>('auto');
+  readonly captureAudio = signal(false);
+  readonly audioReady = signal(false);
+  readonly autoPost = signal(localStorage.getItem('lss-auto-post') === '1');
+  readonly selectionLength = signal(0);
   readonly status = signal('Modell wählen, dann transkribieren.');
   readonly error = signal('');
   readonly busy = signal<'idle' | 'upload' | 'post'>('idle');
@@ -269,6 +273,7 @@ export class App implements OnInit, OnDestroy {
     if (previous.trim()) {
       this.backup.set(previous);
     }
+    let succeeded = false;
     try {
       const result = await this.api.transcribe(file, this.engine(), model.id);
       this.transcript.set(result.text);
@@ -281,6 +286,7 @@ export class App implements OnInit, OnDestroy {
       ].filter(Boolean);
       this.info.set(details.join(' · '));
       this.status.set(`Fertig: ${model.id}.`);
+      succeeded = true;
       if (this.fileInput) {
         this.fileInput.value = '';
       }
@@ -289,6 +295,9 @@ export class App implements OnInit, OnDestroy {
       void this.fail(error, 'Transkription fehlgeschlagen.');
     } finally {
       this.busy.set('idle');
+    }
+    if (succeeded) {
+      await this.autoPostprocess();
     }
   }
 
@@ -313,6 +322,9 @@ export class App implements OnInit, OnDestroy {
       this.words.set([]);
       this.info.set('');
       this.transcript.set('');
+      this.audioReady.set(false);
+      this.stream.captureAudio = this.captureAudio();
+      this.stream.clearAudio();
       await this.stream.start(this.engine(), model.id, {
         onReady: () => this.status.set('Aufnahme läuft. Sprechen; „Beenden“ schreibt das Ergebnis ins Transkript.'),
         onPartial: (text) => this.partial.set(text),
@@ -330,9 +342,11 @@ export class App implements OnInit, OnDestroy {
     try {
       await this.stream.stop();
       this.partial.set('');
+      this.audioReady.set(this.stream.hasAudio);
       this.status.set('Live-Erkennung beendet. Transkript kann bearbeitet werden.');
       const count = this.segments().length;
       this.info.set(count ? `${count} Abschnitte live erkannt` : '');
+      await this.autoPostprocess();
     } catch (error) {
       void this.fail(error, 'Beenden fehlgeschlagen.');
     }
@@ -364,7 +378,7 @@ export class App implements OnInit, OnDestroy {
     this.backup.set(text);
     this.status.set('Zeichensetzung wird nachgezogen (recasepunc, lokal) …');
     try {
-      const result = await this.api.postprocess(text);
+      const result = await this.postprocessChunked(text, 'Zeichensetzung');
       this.transcript.set(result);
       this.status.set('Zeichensetzung nachgezogen. Bitte prüfen; „Wiederherstellen“ zeigt das Original.');
       await this.api.refreshPostprocess();
@@ -373,6 +387,108 @@ export class App implements OnInit, OnDestroy {
     } finally {
       this.busy.set('idle');
     }
+  }
+
+  async postprocessSelection(): Promise<void> {
+    const element = document.getElementById('transcript') as HTMLTextAreaElement | null;
+    const start = element?.selectionStart ?? 0;
+    const end = element?.selectionEnd ?? 0;
+    const text = this.transcript();
+    if (!element || start === end || start >= end || this.busy() !== 'idle') {
+      this.status.set('Bitte zuerst im Transkript einen Textbereich markieren.');
+      return;
+    }
+    const selection = text.slice(start, end);
+    if (!selection.trim()) {
+      this.status.set('Die Auswahl enthält keinen Text.');
+      return;
+    }
+    this.busy.set('post');
+    this.error.set('');
+    this.backup.set(text);
+    this.status.set(`Auswahl wird nachbearbeitet (${selection.length} Zeichen) …`);
+    try {
+      const replaced = await this.postprocessChunked(selection, 'Auswahl');
+      const next = text.slice(0, start) + replaced + text.slice(end);
+      this.transcript.set(next);
+      this.selectionLength.set(replaced.length);
+      this.status.set('Auswahl nachbearbeitet. „Wiederherstellen“ zeigt das Original.');
+      await this.api.refreshPostprocess();
+      requestAnimationFrame(() => {
+        const area = document.getElementById('transcript') as HTMLTextAreaElement | null;
+        if (area) {
+          area.focus();
+          area.setSelectionRange(start, start + replaced.length);
+        }
+      });
+    } catch (error) {
+      void this.fail(error, 'Nachbearbeitung der Auswahl fehlgeschlagen.');
+    } finally {
+      this.busy.set('idle');
+    }
+  }
+
+  updateSelection(event: Event): void {
+    const element = event.target as HTMLTextAreaElement;
+    this.selectionLength.set(Math.max(0, element.selectionEnd - element.selectionStart));
+  }
+
+  setAutoPost(value: boolean): void {
+    this.autoPost.set(value);
+    localStorage.setItem('lss-auto-post', value ? '1' : '0');
+  }
+
+  /** Auto-Modus: nach Transkriptionsende direkt nachziehen (wenn Modell vorhanden). */
+  private async autoPostprocess(): Promise<void> {
+    if (!this.autoPost() || this.busy() !== 'idle' || !this.transcript().trim()) {
+      return;
+    }
+    await this.api.refreshPostprocess();
+    const status = this.api.postprocessStatus();
+    if (!status?.available) {
+      this.status.set('Auto-Nachbearbeitung übersprungen: recasepunc-Modell ist nicht geladen (Abschnitt 03).');
+      return;
+    }
+    const raw = this.transcript();
+    this.busy.set('post');
+    this.backup.set(raw);
+    this.status.set('Auto-Nachbearbeitung: Zeichensetzung wird nachgezogen …');
+    try {
+      this.transcript.set(await this.postprocessChunked(raw, 'Auto-Nachbearbeitung'));
+      this.status.set('Auto-Nachbearbeitung fertig. „Wiederherstellen“ zeigt das rohe Transkript.');
+    } catch (error) {
+      void this.fail(error, 'Auto-Nachbearbeitung fehlgeschlagen.');
+    } finally {
+      this.busy.set('idle');
+    }
+  }
+
+  /** Long Texte abschnittsweise, damit Fortschritt und Fehler pro Abschnitt möglich sind. */
+  private async postprocessChunked(text: string, label: string): Promise<string> {
+    const chunks: string[] = [];
+    let current: string[] = [];
+    let size = 0;
+    for (const line of text.split('\n')) {
+      if (size + line.length + 1 > 2000 && current.length) {
+        chunks.push(current.join('\n'));
+        current = [];
+        size = 0;
+      }
+      current.push(line);
+      size += line.length + 1;
+    }
+    if (current.length) {
+      chunks.push(current.join('\n'));
+    }
+    if (!chunks.length) {
+      return text;
+    }
+    const results: string[] = [];
+    for (let index = 0; index < chunks.length; index++) {
+      this.status.set(`${label} · Abschnitt ${index + 1} / ${chunks.length} …`);
+      results.push(await this.api.postprocess(chunks[index]));
+    }
+    return results.join('\n');
   }
 
   restore(): void {
@@ -413,6 +529,63 @@ export class App implements OnInit, OnDestroy {
 
   saveSrt(): void {
     this.saveFile(this.buildSrt(), 'transkript.srt', 'application/x-subrip;charset=utf-8');
+  }
+
+  saveJson(): void {
+    if (!this.transcript().trim()) {
+      this.status.set('Kein Inhalt zum Speichern.');
+      return;
+    }
+    const model = this.selected();
+    const payload = {
+      created: new Date().toISOString(),
+      engine: this.engine(),
+      model: model?.id ?? null,
+      info: this.info(),
+      text: this.transcript(),
+      segments: this.segments(),
+      words: this.words(),
+    };
+    this.saveFile(JSON.stringify(payload, null, 2), 'transkript.json', 'application/json');
+  }
+
+  saveAudio(): void {
+    const blob = this.stream.takeAudio();
+    if (!blob) {
+      this.audioReady.set(false);
+      this.status.set('Kein aufgezeichnetes Audio vorhanden.');
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `aufnahme-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.wav`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    this.audioReady.set(false);
+    this.status.set('Aufnahme als WAV heruntergeladen (16 kHz, mono).');
+  }
+
+  async deleteModel(): Promise<void> {
+    const model = this.selected();
+    if (!model || this.busy() !== 'idle') {
+      return;
+    }
+    if (!window.confirm(`Modell ${model.id} vom Server löschen? Die Dateien müssen bei Bedarf neu heruntergeladen werden.`)) {
+      return;
+    }
+    this.error.set('');
+    try {
+      await this.api.deleteModel(model.engine as 'vosk' | 'whisper' | 'recasepunc', model.id);
+      await this.api.refreshModels();
+      await this.api.refreshHealth();
+      await this.api.refreshPostprocess();
+      this.status.set(`Gelöscht: ${model.id}.`);
+    } catch (error) {
+      void this.fail(error, 'Löschen fehlgeschlagen.');
+    }
   }
 
   clearTranscript(): void {

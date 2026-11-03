@@ -62,6 +62,9 @@
       @if (selected(); as model) {
         @if (model.kind === 'speech' && !model.available && !model.downloading) {
           <button class="primary" (click)="downloadSelected()">Herunterladen</button>
+          @if (model.url) {
+            <a class="model-link" [href]="model.url" target="_blank" rel="noreferrer">Archiv herunterladen</a>
+          }
         }
         @if (model.downloading) {
           <button (click)="stopDownload()">Download abbrechen</button>
@@ -71,6 +74,9 @@
               · {{ (model.downloaded / 1000000).toFixed(0) }} von {{ (model.download_total / 1000000).toFixed(0) }} MB
             }
           </span>
+        }
+        @if (model.available && model.kind === 'speech') {
+          <button class="danger" [disabled]="busy() !== 'idle' || isRecording()" (click)="deleteModel()">Modell löschen</button>
         }
       }
       @if (hasDownloading()) {
@@ -114,19 +120,27 @@
       </div>
       <div>
         <label>Live vom Mikrofon</label>
-        <div class="row">
+        <div class="row spaced">
           @if (!isRecording()) {
             <button class="primary" [disabled]="!canWork()" (click)="toggleRecording()">Aufnahme starten</button>
           } @else {
             <button class="danger" (click)="toggleRecording()">Beenden</button>
           }
+          @if (audioReady()) {
+            <button [disabled]="busy() !== 'idle'" (click)="saveAudio()">Audio als WAV speichern</button>
+          }
         </div>
+        <label class="check spaced"><input type="checkbox" [ngModel]="captureAudio()" (ngModelChange)="captureAudio.set($event)"
+          [disabled]="isRecording()"><span>Audiodatei mitsichern (WAV, Standard aus)</span></label>
         <p class="hint spaced">
           Der Ton bleibt im Browser und wird als PCM-Strom an den Server gesendet; dort entsteht das Transkript.
           Mikrofonfreigabe braucht HTTPS oder localhost.{{ engine() === 'whisper' ? ' Whisper liefert Ergebnis pro ~4-Sekunden-Abschnitt.' : '' }}
         </p>
         @if (partial()) {
           <p class="partial spaced">… {{ partial() }}</p>
+        }
+        @if (stream.overload() > 0) {
+          <p class="status error spaced" role="alert">Überlastung: {{ stream.overload() }} Frames verworfen, der WebSocket-Puffer war voll.</p>
         }
       </div>
     </div>
@@ -137,6 +151,7 @@
     <label for="transcript">Transkript · bearbeitbar</label>
     <textarea id="transcript" rows="10" placeholder="Hier erscheint das Transkript …"
               [ngModel]="transcript()" (ngModelChange)="transcript.set($event)"
+              (select)="updateSelection($event)" (keyup)="updateSelection($event)" (mouseup)="updateSelection($event)"
               [readonly]="busy() !== 'idle' || isRecording()"></textarea>
     @if (info()) {
       <p class="hint spaced">{{ info() }}</p>
@@ -145,14 +160,20 @@
       <button class="primary" [disabled]="!transcript().trim() || busy() !== 'idle'"
               title="recasepunc (deutsches BERT) zieht Großschreibung und Satzzeichen nach"
               (click)="recasepunc()">Zeichensetzung nachziehen</button>
+      <button [disabled]="selectionLength() === 0 || busy() !== 'idle'"
+              title="Nur den markierten Textbereich nachbearbeiten"
+              (click)="postprocessSelection()">Auswahl nachbearbeiten</button>
       @if (backup() !== null) {
         <button [disabled]="busy() !== 'idle'" (click)="restore()">Wiederherstellen</button>
       }
       <button [disabled]="!transcript().trim() || busy() !== 'idle'" (click)="copyOutput()">Kopieren</button>
       <button [disabled]="!transcript().trim() || busy() !== 'idle'" (click)="saveTxt()">TXT</button>
       <button [disabled]="!transcript().trim() || busy() !== 'idle'" (click)="saveSrt()">SRT</button>
+      <button [disabled]="!transcript().trim() || busy() !== 'idle'" (click)="saveJson()">JSON</button>
       <button [disabled]="!transcript().trim() || busy() !== 'idle' || isRecording()" (click)="clearTranscript()">Leeren</button>
     </div>
+    <label class="check spaced"><input type="checkbox" [ngModel]="autoPost()" (ngModelChange)="setAutoPost($event)"
+      [disabled]="busy() !== 'idle' || isRecording()"><span>Automatisch nach jeder Transkription nachziehen (Auto-Modus)</span></label>
     @if (api.postprocessStatus(); as post) {
       <p class="hint spaced">
         recasepunc:

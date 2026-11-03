@@ -16,6 +16,15 @@ const TARGET_RATE = 16_000;
 @Injectable({ providedIn: 'root' })
 export class StreamService {
   readonly state = signal<StreamState>('idle');
+  /** Anzahl der verworfenen Frames, weil der WebSocket-Puffer voll war. */
+  readonly overload = signal(0);
+
+  /** Vor dem Start setzen: PCM-Frames für den WAV-Export mitsammeln. */
+  captureAudio = false;
+
+  get hasAudio(): boolean {
+    return this.captured.length > 0;
+  }
 
   private ws: WebSocket | null = null;
   private audioContext: AudioContext | null = null;
@@ -24,6 +33,7 @@ export class StreamService {
   private mediaStream: MediaStream | null = null;
   private handlers: StreamHandlers = {};
   private endResolve: (() => void) | null = null;
+  private captured: Int16Array[] = [];
 
   async start(engine: Engine, modelId: string, handlers: StreamHandlers): Promise<void> {
     if (this.state() !== 'idle') {
@@ -31,6 +41,8 @@ export class StreamService {
     }
     this.handlers = handlers;
     this.pendingConfig = { engine, modelId, sampleRate: TARGET_RATE };
+    this.captured = [];
+    this.overload.set(0);
     this.state.set('connecting');
     try {
       await this.openSocket();
@@ -186,9 +198,18 @@ export class StreamService {
       }
       const input = event.inputBuffer.getChannelData(0);
       const pcm = ratio === 1 ? floatToPcm16(input) : resampleToPcm16(input, ratio);
-      if (pcm.byteLength > 0) {
-        this.ws.send(pcm.buffer);
+      if (pcm.byteLength === 0) {
+        return;
       }
+      if (this.captureAudio) {
+        this.captured.push(pcm.slice());
+      }
+      // Wie in der Originial-HTML: kurzer Rückstau, Frames bei Überlast verwerfen.
+      if (this.ws.bufferedAmount > 1_500_000) {
+        this.overload.update((count) => count + 1);
+        return;
+      }
+      this.ws.send(pcm.buffer);
     };
     source.connect(processor);
     processor.connect(context.destination);
@@ -203,6 +224,46 @@ export class StreamService {
     this.audioContext = null;
     this.mediaStream?.getTracks().forEach((track) => track.stop());
     this.mediaStream = null;
+  }
+
+  /** Gesammeltes Mikrofon-Audio als WAV (16-kHz-Mono), oder null. */
+  takeAudio(): Blob | null {
+    if (!this.captured.length) {
+      return null;
+    }
+    const total = this.captured.reduce((sum, chunk) => sum + chunk.length, 0);
+    const wav = new ArrayBuffer(44 + total * 2);
+    const view = new DataView(wav);
+    const write = (offset: number, text: string) => {
+      for (let index = 0; index < text.length; index++) {
+        view.setUint8(offset + index, text.charCodeAt(index));
+      }
+    };
+    write(0, 'RIFF');
+    view.setUint32(4, 36 + total * 2, true);
+    write(8, 'WAVEfmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, TARGET_RATE, true);
+    view.setUint32(28, TARGET_RATE * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    write(36, 'data');
+    view.setUint32(40, total * 2, true);
+    let offset = 44;
+    for (const chunk of this.captured) {
+      for (let index = 0; index < chunk.length; index++) {
+        view.setInt16(offset, chunk[index], true);
+        offset += 2;
+      }
+    }
+    this.captured = [];
+    return new Blob([wav], { type: 'audio/wav' });
+  }
+
+  clearAudio(): void {
+    this.captured = [];
   }
 
   private async teardown(closeSocket: boolean): Promise<void> {

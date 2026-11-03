@@ -9,16 +9,16 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 
 from . import runtime
-from .catalog import (WHISPER_MODELS, build_recasepunc_entry,
+from .catalog import (RECASEPUNC_ID, WHISPER_MODELS, build_recasepunc_entry,
                       build_vosk_entries, build_whisper_entries, vosk_catalog)
 from .config import get_settings
 from .downloads import DownloadManager
 from .engines.vosk_engine import VoskEngine
 from .engines.whisper_engine import WhisperEngine
 from .postprocess.recasepunc_service import RecasepuncService
-from .schemas import (DeviceRequest, DeviceResponse, DownloadStatus, HealthResponse,
-                      ModelsResponse, PostprocessRequest, PostprocessResponse,
-                      TranscribeResponse)
+from .schemas import (DeleteModelRequest, DeleteModelResponse, DeviceRequest,
+                      DeviceResponse, DownloadStatus, HealthResponse, ModelsResponse,
+                      PostprocessRequest, PostprocessResponse, TranscribeResponse)
 
 router = APIRouter(prefix="/api")
 
@@ -113,6 +113,34 @@ async def download_whisper(model_id: str) -> DownloadStatus:
 async def stop_download(model_id: str) -> DownloadStatus:
     get_downloads().stop(model_id)
     return _status_response(model_id)
+
+
+@router.post("/models/delete", response_model=DeleteModelResponse)
+async def delete_model(body: DeleteModelRequest) -> DeleteModelResponse:
+    """Modelldateien vom Server löschen (nach Entladen, falls geladen)."""
+    import shutil
+
+    settings = get_settings()
+    base = settings.models_dir.resolve()
+    known = body.engine == "recasepunc" and body.id == RECASEPUNC_ID
+    if body.engine == "vosk":
+        known = any(model["id"] == body.id for model in vosk_catalog()["models"])
+        target = settings.models_dir / body.id
+        unloaded = get_vosk_engine().loaded == body.id and get_vosk_engine().unload()
+    elif body.engine == "whisper":
+        known = any(entry["id"] == body.id for entry in WHISPER_MODELS)
+        target = settings.models_dir / "whisper" / body.id
+        unloaded = get_whisper_engine().loaded == body.id and get_whisper_engine().unload()
+    else:
+        target = settings.models_dir / RECASEPUNC_ID
+        unloaded = get_recasepunc().loaded and get_recasepunc().unload()
+    if not known:
+        raise HTTPException(404, f"Unbekanntes Modell: {body.id}")
+    resolved = target.resolve()
+    if not resolved.is_relative_to(base) or resolved == base or not resolved.exists():
+        raise HTTPException(404, f"Modellverzeichnis nicht vorhanden: {resolved}")
+    shutil.rmtree(resolved)
+    return DeleteModelResponse(deleted=body.id, unloaded=bool(unloaded))
 
 
 @router.post("/transcribe", response_model=TranscribeResponse)

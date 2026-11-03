@@ -48,6 +48,17 @@ class VoskEngine:
     def loaded(self) -> str | None:
         return self._model_id
 
+    def unload(self) -> bool:
+        with self._lock:
+            if self._model is None:
+                return False
+            self._model = None
+            self._model_id = None
+            import gc
+
+            gc.collect()
+            return True
+
     def ensure_loaded(self, model_id: str):
         with self._lock:
             if self._model is not None and self._model_id == model_id:

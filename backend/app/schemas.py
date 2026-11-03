@@ -94,3 +94,13 @@ class DeviceResponse(BaseModel):
     resolved: str
     cuda_available: bool
     unloaded: list[str] = Field(default_factory=list)
+
+
+class DeleteModelRequest(BaseModel):
+    engine: Literal["vosk", "whisper", "recasepunc"]
+    id: str = Field(min_length=1, max_length=200)
+
+
+class DeleteModelResponse(BaseModel):
+    deleted: str
+    unloaded: bool

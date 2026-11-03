@@ -135,6 +135,26 @@ button.link {
   cursor: pointer;
 }
 
+.model-link {
+  font-size: var(--small);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-weight: 500;
+  font-size: var(--small);
+  cursor: pointer;
+}
+
+.check input {
+  width: auto;
+  min-height: 0;
+}
+
 .row {
   display: flex;
   flex-wrap: wrap;

@@ -58,6 +58,12 @@ export class ApiService {
     return firstValueFrom(this.http.post(`/api/downloads/stop/${modelId}`, {}));
   }
 
+  deleteModel(engine: 'vosk' | 'whisper' | 'recasepunc', id: string): Promise<{ deleted: string }> {
+    return firstValueFrom(
+      this.http.post<{ deleted: string }>('/api/models/delete', { engine, id }),
+    );
+  }
+
   async transcribe(file: File, engine: Engine, modelId: string): Promise<TranscribeResponse> {
     const form = new FormData();
     form.append('file', file, file.name);
