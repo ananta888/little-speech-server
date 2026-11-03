@@ -56,6 +56,18 @@
           Zeichensetzung. Bei einem Wechsel werden geladene Modelle entladen und neu geladen.
         </p>
       </div>
+      <div>
+        <label for="model-file">Eigenes Modell-Archiv öffnen</label>
+        <input id="model-file" type="file" accept=".zip,.tar,.gz,.tgz" #modelFile
+               (change)="importArchive($event, modelFile)" [disabled]="isRecording() || busy() !== 'idle'">
+        @if (importProgress() !== null) {
+          <progress class="spaced" [value]="importProgress()" max="100" aria-label="Upload-Fortschritt"></progress>
+        }
+        <p class="hint spaced">
+          ZIP oder TAR.GZ wie in der Originial-HTML – wird auf den Server übertragen und
+          entpackt, ohne Größengrenze. Symlinks und Pfade außerhalb des Archivs werden abgelehnt.
+        </p>
+      </div>
     </div>
 
     <div class="row">

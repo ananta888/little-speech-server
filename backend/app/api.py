@@ -1,5 +1,6 @@
 """REST-API: Gesundheit, Modellliste, Downloads, Transkription, recasepunc."""
 
+import re
 import tempfile
 import time
 from functools import lru_cache
@@ -124,7 +125,7 @@ async def delete_model(body: DeleteModelRequest) -> DeleteModelResponse:
     base = settings.models_dir.resolve()
     known = body.engine == "recasepunc" and body.id == RECASEPUNC_ID
     if body.engine == "vosk":
-        known = any(model["id"] == body.id for model in vosk_catalog()["models"])
+        known = bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,199}", body.id))
         target = settings.models_dir / body.id
         unloaded = get_vosk_engine().loaded == body.id and get_vosk_engine().unload()
     elif body.engine == "whisper":
@@ -141,6 +142,113 @@ async def delete_model(body: DeleteModelRequest) -> DeleteModelResponse:
         raise HTTPException(404, f"Modellverzeichnis nicht vorhanden: {resolved}")
     shutil.rmtree(resolved)
     return DeleteModelResponse(deleted=body.id, unloaded=bool(unloaded))
+
+
+@router.post("/models/import")
+async def import_model(file: UploadFile = File(...)) -> dict:
+    """Eigenes Vosk-Archiv (ZIP oder TAR.GZ) ins Modellverzeichnis entpacken.
+
+    Pfadsicher: Mitglieder außerhalb des Zielverzeichnisses und Symlinks
+    führen zu einem Fehler, __MACOSX wird ignoriert.
+    """
+    import tarfile
+    import zipfile
+
+    settings = get_settings()
+    base = settings.models_dir.resolve()
+    filename = file.filename or "modell.zip"
+    temp_path = base / f".import-{abs(hash(filename))}.part"
+    model_id: str | None = None
+    try:
+        with open(temp_path, "wb") as handle:
+            while chunk := await file.read(1 << 20):
+                handle.write(chunk)
+        with open(temp_path, "rb") as probe:
+            magic = probe.read(2)
+        if magic == b"PK":
+            with zipfile.ZipFile(temp_path) as archive:
+                names = [name for name in archive.namelist()
+                         if not name.endswith("/") and not name.startswith("__MACOSX/")]
+                model_id = _pick_import_target(names, filename)
+                if _is_nested_top_dir(names, model_id):
+                    _safe_extract_zip(archive, base, names)
+                else:
+                    target = base / model_id
+                    target.mkdir(parents=True, exist_ok=True)
+                    _safe_extract_zip(archive, target, names)
+        elif magic == b"\x1f\x8b":
+            with tarfile.open(temp_path, "r:gz") as archive:
+                members = [member for member in archive.getmembers()
+                           if member.isfile() and not member.name.startswith("__MACOSX/")]
+                names = [member.name for member in members]
+                model_id = _pick_import_target(names, filename)
+                if _is_nested_top_dir(names, model_id):
+                    _safe_extract_tar(archive, base, members)
+                else:
+                    target = base / model_id
+                    target.mkdir(parents=True, exist_ok=True)
+                    _safe_extract_tar(archive, target, members)
+        else:
+            raise HTTPException(400, "Datei ist weder ZIP noch TAR.GZ/TGZ.")
+    except HTTPException:
+        raise
+    except Exception as error:  # noqa: BLE001
+        raise HTTPException(422, f"Archiv konnte nicht entpackt werden: {error}") from error
+    finally:
+        temp_path.unlink(missing_ok=True)
+    if not model_id:
+        raise HTTPException(422, "Archiv enthält kein Modellverzeichnis.")
+    resolved = (base / model_id).resolve()
+    if not resolved.is_relative_to(base) or not resolved.is_dir():
+        raise HTTPException(422, "Archiv enthält kein brauchbares Modellverzeichnis.")
+    if not any(resolved.iterdir()):
+        resolved.rmdir()
+        raise HTTPException(422, "Archiv ist leer.")
+    return {"id": model_id}
+
+
+_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,199}")
+
+
+def _pick_import_target(names: list[str], filename: str) -> str:
+    """Ein Top-Verzeichnis im Archiv wird übernommen, sonst der Dateiname."""
+    top = {name.split("/")[0] for name in names if name.split("/")[0]}
+    if len(top) == 1 and all("/" in name for name in names):
+        candidate = next(iter(top))
+        if _ID_PATTERN.fullmatch(candidate) and candidate not in {".", ".."}:
+            return candidate
+    return _import_id_from_name(filename)
+
+
+def _is_nested_top_dir(names: list[str], model_id: str) -> bool:
+    return bool(names) and all(name.startswith(model_id + "/") for name in names)
+
+
+def _safe_extract_zip(archive, destination: Path, names: list[str]) -> None:
+    for name in names:
+        if not (destination / name).resolve().is_relative_to(destination):
+            raise HTTPException(422, f"Archiv enthält unzulässigen Pfad: {name}")
+    archive.extractall(destination, members=names)
+
+
+def _safe_extract_tar(archive, destination: Path, members) -> None:
+    for member in members:
+        if member.issym() or member.islnk():
+            raise HTTPException(422, f"Archiv enthält Symlinks: {member.name}")
+        if not (destination / member.name).resolve().is_relative_to(destination):
+            raise HTTPException(422, f"Archiv enthält unzulässigen Pfad: {member.name}")
+    archive.extractall(destination, members=members)
+
+
+def _import_id_from_name(filename: str) -> str:
+    name = filename
+    for ending in (".tar.gz", ".tgz", ".tar", ".zip", ".gz"):
+        if name.endswith(ending):
+            name = name[: -len(ending)]
+            break
+    name = name.replace("\\", "/").split("/")[-1]
+    name = re.sub(r"[^A-Za-z0-9._-]", "-", name).strip(".-") or "importiertes-modell"
+    return name[:200]
 
 
 @router.post("/transcribe", response_model=TranscribeResponse)

@@ -24,6 +24,8 @@ export class App implements OnInit, OnDestroy {
   readonly audioReady = signal(false);
   readonly autoPost = signal(localStorage.getItem('lss-auto-post') === '1');
   readonly selectionLength = signal(0);
+  readonly importProgress = signal<number | null>(null);
+  readonly importedModels = signal<ModelEntry[]>([]);
   readonly status = signal('Modell wählen, dann transkribieren.');
   readonly error = signal('');
   readonly busy = signal<'idle' | 'upload' | 'post'>('idle');
@@ -57,7 +59,11 @@ export class App implements OnInit, OnDestroy {
     if (!models) {
       return [];
     }
-    const list = engine === 'vosk' ? models.vosk : models.whisper;
+    const list = engine === 'vosk'
+      ? [...models.vosk, ...this.importedModels().filter(
+          (extra) => !models.vosk.some((entry) => entry.id === extra.id),
+        )]
+      : models.whisper;
     const order = (entry: ModelEntry): number => {
       if (engine === 'whisper') {
         return 0;
@@ -568,6 +574,51 @@ export class App implements OnInit, OnDestroy {
     this.status.set('Aufnahme als WAV heruntergeladen (16 kHz, mono).');
   }
 
+  async importArchive(event: Event, input: HTMLInputElement): Promise<void> {
+    const file = (event.target as HTMLInputElement).files?.[0] ?? null;
+    if (!file || this.busy() !== 'idle' || this.isRecording()) {
+      return;
+    }
+    this.error.set('');
+    this.engine.set('vosk');
+    this.status.set(`${file.name} wird auf den Server geladen …`);
+    this.importProgress.set(0);
+    try {
+      const result = await this.api.importArchive(file, (loaded, total) => {
+        const percent = Math.round((loaded / total) * 100);
+        this.importProgress.set(percent);
+        this.status.set(`${file.name} wird auf den Server geladen … ${percent} % (${(loaded / 1e6).toFixed(0)} MB)`);
+      });
+      const entry: ModelEntry = {
+        id: result.id,
+        engine: 'vosk',
+        name: `Importiert · ${result.id}`,
+        language: 'Importiert',
+        size: `${(file.size / 1e6).toFixed(1)} MB`,
+        bytes: file.size,
+        license: 'unbekannt (eigenes Archiv)',
+        kind: 'speech',
+        available: true,
+        downloading: false,
+        downloaded: null,
+        download_total: null,
+        percent: null,
+        error: null,
+        note: 'Lokal importiertes Archiv.',
+        url: null,
+      };
+      this.importedModels.update((list) => [...list.filter((m) => m.id !== entry.id), entry]);
+      this.voskModel.set(result.id);
+      await this.api.refreshModels();
+      this.status.set(`Importiert: ${result.id}. Modell ist wählbar und bereit.`);
+    } catch (error) {
+      void this.fail(error, 'Import fehlgeschlagen.');
+    } finally {
+      this.importProgress.set(null);
+      input.value = '';
+    }
+  }
+
   async deleteModel(): Promise<void> {
     const model = this.selected();
     if (!model || this.busy() !== 'idle') {
@@ -579,6 +630,7 @@ export class App implements OnInit, OnDestroy {
     this.error.set('');
     try {
       await this.api.deleteModel(model.engine as 'vosk' | 'whisper' | 'recasepunc', model.id);
+      this.importedModels.update((list) => list.filter((entry) => entry.id !== model.id));
       await this.api.refreshModels();
       await this.api.refreshHealth();
       await this.api.refreshPostprocess();

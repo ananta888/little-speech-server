@@ -64,6 +64,40 @@ export class ApiService {
     );
   }
 
+  /** Eigenes Archiv hochladen – mit Fortschritt (fetch kennt kein Upload-Progress). */
+  importArchive(
+    file: File,
+    onProgress?: (loaded: number, total: number) => void,
+  ): Promise<{ id: string }> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/models/import');
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          onProgress?.(event.loaded, event.total);
+        }
+      };
+      xhr.onload = () => {
+        let body: { detail?: unknown } = {};
+        try {
+          body = JSON.parse(xhr.responseText);
+        } catch {
+          /* Antwortheader ohne JSON */
+        }
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(body as { id: string });
+        } else {
+          const detail = typeof body.detail === 'string' ? body.detail : xhr.statusText;
+          reject(new Error(detail || `Upload fehlgeschlagen (${xhr.status})`));
+        }
+      };
+      xhr.onerror = () => reject(new Error('Netzwerkfehler beim Hochladen des Archivs.'));
+      const form = new FormData();
+      form.append('file', file, file.name);
+      xhr.send(form);
+    });
+  }
+
   async transcribe(file: File, engine: Engine, modelId: string): Promise<TranscribeResponse> {
     const form = new FormData();
     form.append('file', file, file.name);

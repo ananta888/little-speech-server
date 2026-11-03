@@ -168,3 +168,32 @@ def test_device_switch_and_validation():
         assert health["device_requested"] == "auto"
         assert health["device"] in ("cpu", "cuda")
         assert isinstance(health["cuda"], bool)
+
+
+def test_import_archive_roundtrip_and_zip_slip():
+    import io
+    import zipfile as zf
+
+    with TestClient(app) as client:
+        # Zip-Slip: Mitglied außerhalb des Zielverzeichnisses muss abgelehnt werden
+        evil = io.BytesIO()
+        with zf.ZipFile(evil, "w") as archive:
+            archive.writestr("../evil.txt", "x")
+        response = client.post("/api/models/import", files={"file": ("evil.zip", evil.getvalue())})
+        assert response.status_code == 422, response.text
+
+        # Gültiges Mini-Archiv mit Top-Verzeichnis
+        good = io.BytesIO()
+        with zf.ZipFile(good, "w") as archive:
+            archive.writestr("vosk-model-test-import/final.mdl", "dummy")
+        response = client.post(
+            "/api/models/import", files={"file": ("vosk-model-test-import.zip", good.getvalue())}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["id"] == "vosk-model-test-import"
+
+        # Und wieder löschen (importierte Modelle sind löschbar)
+        response = client.post(
+            "/api/models/delete", json={"engine": "vosk", "id": "vosk-model-test-import"}
+        )
+        assert response.status_code == 200, response.text
