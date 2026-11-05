@@ -2,7 +2,7 @@ export type Engine = 'vosk' | 'whisper';
 
 export interface ModelEntry {
   id: string;
-  engine: Engine | 'recasepunc';
+  engine: Engine | 'recasepunc' | 'llm';
   name: string;
   language: string | null;
   size: string | null;
@@ -23,6 +23,7 @@ export interface ModelsResponse {
   vosk: ModelEntry[];
   whisper: ModelEntry[];
   recasepunc: ModelEntry;
+  llm: ModelEntry[];
   device: string;
   models_dir: string;
 }
@@ -35,6 +36,7 @@ export interface HealthResponse {
   vosk_loaded: string | null;
   whisper_loaded: string | null;
   recasepunc_loaded: boolean;
+  text_loaded: string | null;
   ffmpeg: boolean;
 }
 

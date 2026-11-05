@@ -7,10 +7,16 @@ Rechner, die Zeichensetzung zieht das recasepunc-Modell nach.
 ## Möglichkeiten
 
 - **Vosk** (CPU, sparsam): alle 76 Modelle des offiziellen Katalogs,
-  Live-Erkennung per WebSocket (PCM-Strom,16 kHz) und Datei-Upload mit
+  Live-Erkennung per WebSocket (PCM-Strom, 16 kHz) und Datei-Upload mit
   Wortzeiten, Konfidenzen und Abschnitten.
 - **Whisper** (faster-whisper): tiny bis large-v3, Datei-Upload und Live in
   ~4-Sekunden-Abschnitten; Modelle kommen auf Abruf von Hugging Face.
+- **Textaufgaben mit lokalem LLM** (Abschnitt 04, Qwen3 0.6B/1.7B): das
+  Transkript kurz zusammenfassen, als Stichpunkte ausgeben, in Aufgaben &
+  Entscheidungen zerlegen oder sprachlich bereinigen – alles lokal, gestreamt
+  Abschnitt für Abschnitt mit Live-Entwurf. Sprach- und Textmodell werden
+  wechselseitig entladen, nie beide gleichzeitig; Abbruch stoppt die
+  Generierung sofort.
 - **recasepunc** (deutsch, ca. 1,1 G): Großschreibung und Satzzeichen für
   Transkripte – ein Klick im Abschnitt „Transkript“, mit „Wiederherstellen“
   zum Original. Ergebnis ist mit dem offiziellen Referenz-Output des Modells
@@ -25,7 +31,7 @@ Rechner, die Zeichensetzung zieht das recasepunc-Modell nach.
 - Python 3.12+, Node 20+ (nur für den Frontend-Build)
 - `ffmpeg` im PATH (Pflicht für Datei-Uploads): `sudo apt install ffmpeg`
 - Für GPU-Betrieb: CUDA-fähiges `torch` (Standard-Installation ist CPU;
-  siehe „Optionen“ unten)
+  betrifft Whisper, recasepunc und Qwen3; siehe „Optionen“ unten)
 
 ## Starten
 
@@ -41,7 +47,7 @@ cd frontend && npm ci && npm run build && cd ..
 cd backend && .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Dann <http://127.0.0.1:8000> öffnen, in01 Engine und Modell wählen,
+Dann <http://127.0.0.1:8000> öffnen, in Abschnitt 01 Engine und Modell wählen,
 „Herunterladen“ klicken, fertig.
 
 ### Entwicklung (Frontend live)
@@ -56,13 +62,19 @@ cd frontend && npm start
 ## Abläufe
 
 - **Datei-Upload** → `POST /api/transcribe` (Multipart). Vosk dekodiert
-  serverseitig per ffmpeg auf16 kHz mono, Whisper reicht die Datei direkt.
+  serverseitig per ffmpeg auf 16 kHz mono, Whisper reicht die Datei direkt.
 - **Live-Mikrofon** → Browser erzeugt PCM16@16 kHz und sendet Binärframes an
   `WS /ws/stream`. Erste Nachricht ist
   `{"type":"config","engine":"vosk"|"whisper","modelId":"..."}`, dann
   `partial`/`final`-Antworten, zum Beenden `{"type":"stop"}` bis `end`.
 - **Zeichensetzung** → `POST /api/postprocess`. Der Checkpoint wird einmalig
   lazy geladen (CPU-RAM danach ca. 0,5 G, GPU-Cache bei CUDA-Nutzung).
+- **Textaufgabe (Abschnitt 04)** → `POST /api/text` als NDJSON-Stream
+  (`load`, `preview`, `section`, `done`/`cancelled`, `error`). Lange Texte
+  laufen in Abschnitten von max. 1400 Tokens; Zusammenfassungen werden
+  anschließend verdichtet. Nur eine Aufgabe gleichzeitig (sonst `409`);
+  `POST /api/text/cancel` stoppt die laufende Generierung, ein Schließen
+  des Streams (Tab zu) ebenfalls.
 
 ### REST-Übersicht
 
@@ -72,10 +84,15 @@ cd frontend && npm start
 | GET | `/api/models` | Katalog + Download-Status |
 | POST | `/api/downloads/vosk/{id}` | Vosk-Archiv laden (entpackt sich selbst) |
 | POST | `/api/downloads/whisper/{id}` | Whisper-Modell vorladen |
+| POST | `/api/downloads/llm/{id}` | Textmodell (Qwen3) vorladen |
 | POST | `/api/downloads/stop/{id}` | Download abbrechen |
 | POST | `/api/transcribe` | Datei transkribieren |
 | POST | `/api/postprocess` | recasepunc auf Text anwenden |
 | GET | `/api/postprocess/status` | recasepunc vorhanden/geladen |
+| POST | `/api/text` | Textaufgabe streamen (NDJSON) |
+| POST | `/api/text/cancel` | laufende Textaufgabe abbrechen |
+| POST | `/api/text/unload` | Textmodell entladen |
+| GET | `/api/text/status` | Textmodell, Gerät, Sperre |
 
 ## Konfiguration (Umgebung, Präfix `LSS_`)
 
@@ -89,8 +106,8 @@ cd frontend && npm start
 
 ## GPU (optional)
 
-Standardmäßig ist CPU-torch installiert. Für den GPU-Betrieb (Whisper und
-recasepunc; Vosk bleibt CPU, das ist Kaldi-bedingt):
+Standardmäßig ist CPU-torch installiert. Für den GPU-Betrieb (Whisper,
+recasepunc und Qwen3; Vosk bleibt CPU, das ist Kaldi-bedingt):
 
 ```sh
 backend/.venv/bin/pip install 'torch==2.11.0+cu128' --index-url https://download.pytorch.org/whl/cu128
@@ -123,7 +140,7 @@ Bei Problemen von der Konsole aus prüfen, ob CUDA sichtbar ist:
 ```sh
 cd backend
 .venv/bin/ruff check app tests          # Stil/Imports (vendorter Code ist ausgenommen)
-.venv/bin/python -m pytest tests -q     #10 Tests; große Modelle werden per skipif gemieden
+.venv/bin/python -m pytest tests -q     # große Modelle werden per skipif gemieden
 cd ../frontend && npx ng build          # Typ- und Template-Prüfung ist der Build
 ```
 
@@ -132,9 +149,9 @@ Der Modellkatalog (Snapshot) lässt sich mit
 
 ## Speicher & Modelle
 
-- recasepunc-Checkpoint1,3 G (der Adam-Anteil wird nach dem Laden freigegeben),
+- recasepunc-Checkpoint 1,3 G (der Adam-Anteil wird nach dem Laden freigegeben),
   Speicherbedarf danach ca. 0,5 G. Auf CUDA automatisch auf der GPU.
-- Vosk-Großmodelle (1,9 G /4,4 G) brauchen Zeit zum Laden; die UI meldet das
+- Vosk-Großmodelle (1,9 G / 4,4 G) brauchen Zeit zum Laden; die UI meldet das
   über den Status. Pro Engine wird genau ein Modell resident gehalten.
 - Downloads liegen unter `models/` (gitignore) und werden wiederverwendet.
 

@@ -230,8 +230,77 @@
     }
   </section>
 
+  <section class="panel" aria-labelledby="text-title">
+    <h2 id="text-title">04 · Text zusammenfassen &amp; bearbeiten</h2>
+    <p class="hint">
+      Verwende dein Transkript aus Abschnitt 03. Das Textmodell wird erst beim Start geladen und
+      verarbeitet alles lokal; dafür wird ein geladenes Spracherkennungsmodell entladen. Ergebnis
+      erscheint getrennt vom Transkript und bleibt bearbeitbar.
+    </p>
+    <div class="grid">
+      <div>
+        <label for="llm-model">Textmodell</label>
+        <select id="llm-model" [ngModel]="llmModel()" (ngModelChange)="llmModel.set($event)" [disabled]="llmBusy()">
+          <option value="qwen3-0.6b">Qwen3 0.6B · klein</option>
+          <option value="qwen3-1.7b" [disabled]="!gpuAvailable()">Qwen3 1.7B · GPU</option>
+        </select>
+        <p class="hint spaced">{{ llmInfo() }}</p>
+      </div>
+      <div>
+        <label for="llm-task">Was möchtest du tun?</label>
+        <select id="llm-task" [ngModel]="llmTask()" (ngModelChange)="llmTask.set($event)" [disabled]="llmBusy()">
+          <option value="summary">Kurz zusammenfassen</option>
+          <option value="bullets">Wichtigste Stichpunkte</option>
+          <option value="tasks">Aufgaben &amp; Entscheidungen</option>
+          <option value="cleanup">Sprache &amp; Zeichensetzung bereinigen</option>
+        </select>
+        <p class="hint spaced">
+          Ausführung folgt Abschnitt 01 (aktiv: {{ activeDeviceLabel() }}). Maximal 2.000.000 Zeichen
+          pro Auftrag; ab etwa 5.600 Zeichen laufen Texte abschnittsweise mit Fortschritt.
+        </p>
+      </div>
+    </div>
+    <div class="row spaced">
+      <button class="primary" [disabled]="!transcript().trim() || llmBusy() || busy() !== 'idle' || isRecording()"
+              (click)="runTextTask()">Text verarbeiten</button>
+      @if (llmBusy()) {
+        <button class="danger" (click)="cancelTextTask()">Abbrechen</button>
+      }
+      <button [disabled]="llmBusy() || !llmLoadedId()" (click)="unloadTextModel()">Textmodell entladen</button>
+      @if (llmEntry(); as entry) {
+        @if (!entry.available && !entry.downloading) {
+          <button [disabled]="llmBusy()" (click)="downloadLlm()">Vorladen ({{ entry.size }})</button>
+        }
+        @if (entry.downloading) {
+          <span class="hint">lädt … {{ entry.percent !== null ? entry.percent + ' %' : '…' }}</span>
+          <button (click)="stopDownloadLlm()">Abbrechen</button>
+        }
+      }
+    </div>
+    @if (llmEntry()?.downloading) {
+      <progress class="spaced" [value]="llmEntry()?.percent ?? 0" max="100" aria-label="Modell-Download"></progress>
+    }
+    <p id="llm-status" class="status spaced" role="status" aria-live="polite">{{ llmStatus() }}</p>
+    @if (llmError()) {
+      <p class="status error" role="alert">{{ llmError() }}</p>
+    }
+    <label for="llm-output" class="spaced">Ergebnis · bearbeitbar</label>
+    <textarea id="llm-output" rows="8"
+              placeholder="Hier erscheint die Zusammenfassung oder der bereinigte Text …"
+              [ngModel]="llmOutput()" (ngModelChange)="llmOutput.set($event)" [readonly]="llmBusy()"></textarea>
+    <div class="row spaced">
+      <button [disabled]="llmBusy() || !llmOutput().trim()" (click)="copyLlmOutput()">Kopieren</button>
+      <button [disabled]="llmBusy() || !llmOutput().trim()" (click)="saveLlmTxt()">TXT</button>
+    </div>
+    <p class="hint spaced">
+      KI-Entwurf: prüfe Namen, Zahlen, Termine und die Zuordnung von Aufgaben. Dein Original bleibt
+      im Transkript oben erhalten. Modelldateien liegen dauerhaft unter
+      <code>{{ api.models()?.models_dir ?? '…' }}/llm</code>.
+    </p>
+  </section>
+
   <section class="panel" aria-labelledby="info-title">
-    <h2 id="info-title">04 · Server &amp; Hinweise</h2>
+    <h2 id="info-title">05 · Server &amp; Hinweise</h2>
     <div class="grid">
       <div>
         <p class="hint">

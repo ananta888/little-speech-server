@@ -8,10 +8,12 @@ from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import StreamingResponse
 
 from . import runtime
-from .catalog import (RECASEPUNC_ID, WHISPER_MODELS, build_recasepunc_entry,
-                      build_vosk_entries, build_whisper_entries, vosk_catalog)
+from .catalog import (RECASEPUNC_ID, WHISPER_MODELS, build_llm_entries,
+                      build_recasepunc_entry, build_vosk_entries, build_whisper_entries,
+                      vosk_catalog)
 from .config import get_settings
 from .downloads import DownloadManager
 from .engines.vosk_engine import VoskEngine
@@ -19,7 +21,9 @@ from .engines.whisper_engine import WhisperEngine
 from .postprocess.recasepunc_service import RecasepuncService
 from .schemas import (DeleteModelRequest, DeleteModelResponse, DeviceRequest,
                       DeviceResponse, DownloadStatus, HealthResponse, ModelsResponse,
-                      PostprocessRequest, PostprocessResponse, TranscribeResponse)
+                      PostprocessRequest, PostprocessResponse, TextTaskRequest,
+                      TranscribeResponse)
+from .text_service import TEXT_MODELS, get_text_service, run_streaming
 
 router = APIRouter(prefix="/api")
 
@@ -55,6 +59,7 @@ async def health() -> HealthResponse:
         vosk_loaded=get_vosk_engine().loaded,
         whisper_loaded=get_whisper_engine().loaded,
         recasepunc_loaded=get_recasepunc().loaded,
+        text_loaded=get_text_service().loaded,
         ffmpeg=bool(shutil.which("ffmpeg")),
     )
 
@@ -71,6 +76,8 @@ async def set_device(body: DeviceRequest) -> DeviceResponse:
             unloaded.append("whisper")
         if get_recasepunc().unload():
             unloaded.append("recasepunc")
+        if get_text_service().unload():
+            unloaded.append("text")
     return DeviceResponse(
         requested=runtime.requested_device(),
         resolved=after,
@@ -87,9 +94,19 @@ async def models() -> ModelsResponse:
         vosk=build_vosk_entries(settings, statuses),
         whisper=build_whisper_entries(settings, statuses),
         recasepunc=build_recasepunc_entry(settings, statuses),
+        llm=build_llm_entries(settings, statuses),
         device=runtime.resolve_device(),
         models_dir=str(settings.models_dir),
     )
+
+
+@router.post("/downloads/llm/{model_id}", response_model=DownloadStatus)
+async def download_llm(model_id: str) -> DownloadStatus:
+    info = TEXT_MODELS.get(model_id)
+    if not info:
+        raise HTTPException(404, f"Unbekanntes Textmodell: {model_id}")
+    task = get_downloads().start_llm(model_id, info["hf"])
+    return _status_response(task.id)
 
 
 @router.post("/downloads/vosk/{model_id}", response_model=DownloadStatus)
@@ -132,6 +149,10 @@ async def delete_model(body: DeleteModelRequest) -> DeleteModelResponse:
         known = any(entry["id"] == body.id for entry in WHISPER_MODELS)
         target = settings.models_dir / "whisper" / body.id
         unloaded = get_whisper_engine().loaded == body.id and get_whisper_engine().unload()
+    elif body.engine == "llm":
+        known = body.id in TEXT_MODELS
+        target = settings.models_dir / "llm" / body.id
+        unloaded = get_text_service().loaded == body.id and get_text_service().unload()
     else:
         target = settings.models_dir / RECASEPUNC_ID
         unloaded = get_recasepunc().loaded and get_recasepunc().unload()
@@ -315,6 +336,45 @@ async def postprocess_status() -> dict:
         "loaded": service.loaded,
         "loading": service.loading,
         "device": runtime.resolve_device(),
+    }
+
+
+@router.post("/text")
+async def text_task(body: TextTaskRequest) -> StreamingResponse:
+    """Textaufgabe als NDJSON-Stream (load, preview, section, done|cancelled, error)."""
+    if body.model not in TEXT_MODELS:
+        raise HTTPException(404, f"Unbekanntes Textmodell: {body.model}")
+    service = get_text_service()
+    if service.busy:
+        raise HTTPException(409, "Es läuft bereits eine Textaufgabe – erst abwarten oder abbrechen.")
+    generator = run_streaming(body.text, body.task, body.model, service)
+    return StreamingResponse(generator, media_type="application/x-ndjson")
+
+
+@router.post("/text/cancel")
+async def text_cancel() -> dict:
+    get_text_service().cancel()
+    return {"ok": True}
+
+
+@router.post("/text/unload")
+async def text_unload() -> dict:
+    return {"unloaded": get_text_service().unload()}
+
+
+@router.get("/text/status")
+async def text_status() -> dict:
+    service = get_text_service()
+    return {
+        "loaded": service.loaded,
+        "loading": service.loading,
+        "busy": service.busy,
+        "device": runtime.resolve_device(),
+        "models": [
+            {"id": model_id, "available": (get_settings().models_dir / "llm" / model_id / "config.json").is_file(),
+             **{key: TEXT_MODELS[model_id][key] for key in ("name", "size", "min_device")}}
+            for model_id in TEXT_MODELS
+        ],
     }
 
 

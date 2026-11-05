@@ -26,6 +26,15 @@ export class App implements OnInit, OnDestroy {
   readonly selectionLength = signal(0);
   readonly importProgress = signal<number | null>(null);
   readonly importedModels = signal<ModelEntry[]>([]);
+  // Sektion 04 – Textaufgaben
+  readonly llmModel = signal('qwen3-0.6b');
+  readonly llmTask = signal<'summary' | 'bullets' | 'tasks' | 'cleanup'>('summary');
+  readonly llmOutput = signal('');
+  readonly llmBusy = signal(false);
+  readonly llmStatus = signal('Transkript aus03 verwenden, Aufgabe wählen und starten.');
+  readonly llmError = signal('');
+  private llmAbort: AbortController | null = null;
+  private llmSections: string[] = [];
   readonly status = signal('Modell wählen, dann transkribieren.');
   readonly error = signal('');
   readonly busy = signal<'idle' | 'upload' | 'post'>('idle');
@@ -119,7 +128,7 @@ export class App implements OnInit, OnDestroy {
     if (model.engine === 'vosk' && !model.available) {
       return false;
     }
-    return this.busy() === 'idle' && this.stream.state() === 'idle';
+    return this.busy() === 'idle' && this.stream.state() === 'idle' && !this.llmBusy();
   });
 
   readonly isRecording = computed(() => this.stream.state() !== 'idle');
@@ -132,6 +141,25 @@ export class App implements OnInit, OnDestroy {
       return '…';
     }
     return health.device === 'cuda' ? 'GPU (CUDA)' : 'CPU';
+  });
+
+  readonly llmEntry = computed<ModelEntry | null>(
+    () => this.api.models()?.llm.find((entry) => entry.id === this.llmModel()) ?? null,
+  );
+
+  readonly llmLoadedId = computed(() => this.api.health()?.text_loaded ?? null);
+
+  readonly llmInfo = computed(() => {
+    const entry = this.llmEntry();
+    if (!entry) {
+      return '';
+    }
+    const parts = [`Download ${entry.size ?? '…'}`];
+    if (entry.note) {
+      parts.push(entry.note);
+    }
+    parts.push(this.llmLoadedId() === entry.id ? 'geladen' : entry.available ? 'bereit' : 'nicht geladen');
+    return parts.join(' · ');
   });
 
   async ngOnInit(): Promise<void> {
@@ -516,6 +544,209 @@ export class App implements OnInit, OnDestroy {
     } catch (error) {
       void this.fail(error, 'Download konnte nicht gestartet werden.');
     }
+  }
+
+  // ------------------------------------------------------- Sektion 04 · Text
+
+  async downloadLlm(): Promise<void> {
+    const entry = this.llmEntry();
+    if (!entry) {
+      return;
+    }
+    this.llmError.set('');
+    try {
+      await this.api.downloadLlm(entry.id);
+      this.llmStatus.set(`${entry.name}: Download gestartet …`);
+      void this.api.refreshModels();
+      this.schedulePoll();
+    } catch (error) {
+      const message = await this.api.errorText(error);
+      this.llmError.set(`Download konnte nicht gestartet werden. ${message}`);
+    }
+  }
+
+  async stopDownloadLlm(): Promise<void> {
+    const entry = this.llmEntry();
+    if (!entry) {
+      return;
+    }
+    try {
+      await this.api.stopDownload(`llm:${entry.id}`);
+      this.llmStatus.set(`${entry.name}: Download abgebrochen.`);
+      void this.api.refreshModels();
+      this.schedulePoll();
+    } catch (error) {
+      const message = await this.api.errorText(error);
+      this.llmError.set(message);
+    }
+  }
+
+  async unloadTextModel(): Promise<void> {
+    try {
+      const result = await this.api.unloadText();
+      await this.api.refreshHealth();
+      this.llmStatus.set(result.unloaded ? 'Textmodell entladen.' : 'Kein Textmodell geladen.');
+    } catch (error) {
+      const message = await this.api.errorText(error);
+      this.llmError.set(message);
+    }
+  }
+
+  async runTextTask(): Promise<void> {
+    const text = this.transcript();
+    if (!text.trim() || this.llmBusy() || this.busy() !== 'idle' || this.isRecording()) {
+      return;
+    }
+    const entry = this.llmEntry();
+    if (entry && entry.note?.includes('GPU') && !this.gpuAvailable()) {
+      this.llmError.set('Dieses Textmodell benötigt eine GPU – Gerät in Abschnitt 01 umstellen.');
+      return;
+    }
+    this.llmBusy.set(true);
+    this.llmError.set('');
+    this.llmOutput.set('');
+    this.llmSections = [];
+    this.llmStatus.set('Verbindung wird aufgebaut …');
+    this.llmAbort = new AbortController();
+    try {
+      const response = await fetch('/api/text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, task: this.llmTask(), model: this.llmModel() }),
+        signal: this.llmAbort.signal,
+      });
+      if (!response.ok || !response.body) {
+        let detail = `HTTP ${response.status}`;
+        try {
+          const body = await response.json();
+          if (typeof body.detail === 'string') {
+            detail = body.detail;
+          }
+        } catch {
+          /* ohne JSON-Antwort */
+        }
+        throw new Error(detail);
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        buffer += decoder.decode(value, { stream: true });
+        let newline = buffer.indexOf('\n');
+        while (newline >= 0) {
+          const line = buffer.slice(0, newline);
+          buffer = buffer.slice(newline + 1);
+          if (line.trim()) {
+            this.handleTextEvent(JSON.parse(line));
+          }
+          newline = buffer.indexOf('\n');
+        }
+      }
+      await this.api.refreshHealth();
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        this.llmStatus.set('Abgebrochen. Ein sichtbarer Entwurf bleibt erhalten.');
+      } else {
+        const message = await this.api.errorText(error);
+        this.llmError.set(message);
+        this.llmStatus.set('Verarbeitung nicht abgeschlossen.');
+      }
+    } finally {
+      this.llmAbort = null;
+      this.llmBusy.set(false);
+      void this.api.refreshModels();
+    }
+  }
+
+  private handleTextEvent(event: {
+    type: string;
+    status?: string;
+    file?: string;
+    loaded?: number;
+    total?: number;
+    model?: string;
+    device?: string;
+    index?: number;
+    merging?: boolean;
+    label?: string;
+    text?: string;
+    sections?: number;
+    took_ms?: number;
+    message?: string;
+  }): void {
+    switch (event.type) {
+      case 'download':
+        if (event.status === 'progress' && event.total) {
+          this.llmStatus.set(
+            `Modell laden: ${event.file ?? ''} · ${((event.loaded ?? 0) / 1e6).toFixed(1)} / ${((event.total) / 1e6).toFixed(1)} MB`,
+          );
+        } else if (event.status === 'done') {
+          this.llmStatus.set('Modelldateien vorbereiten …');
+        }
+        break;
+      case 'load':
+        this.llmStatus.set(`Modell wird geladen (${event.device === 'cuda' ? 'GPU' : 'CPU'}) …`);
+        break;
+      case 'preview':
+        this.llmOutput.set(this.sectionDraft(event.text ?? ''));
+        this.llmStatus.set(
+          `${event.label ?? 'Text verarbeiten'} · Abschnitt ${event.index} / ${event.total} · Entwurf`,
+        );
+        break;
+      case 'section':
+        if (event.index && event.text !== undefined) {
+          this.llmSections[event.index - 1] = event.text;
+        }
+        this.llmOutput.set(this.sectionDraft(''));
+        this.llmStatus.set(`Abschnitt ${event.index} / ${event.total} fertig`);
+        break;
+      case 'done':
+        this.llmOutput.set(event.text ?? '');
+        this.llmStatus.set(
+          `Fertig · ${event.sections ?? 1} Abschnitt${(event.sections ?? 1) === 1 ? '' : 'e'} · ${event.took_ms ?? 0} ms. Ergebnis prüfen und bei Bedarf speichern.`,
+        );
+        break;
+      case 'cancelled':
+        if (event.text) {
+          this.llmOutput.set(event.text);
+        }
+        this.llmStatus.set('Abgebrochen. Der bis dahin erzeugte Teil bleibt als Entwurf erhalten.');
+        break;
+      case 'error':
+        this.llmError.set(event.message || 'Unbekannter Fehler im Textdienst.');
+        this.llmStatus.set('Verarbeitung fehlgeschlagen.');
+        break;
+    }
+  }
+
+  private sectionDraft(preview: string): string {
+    const done = this.llmSections.filter((section) => section !== undefined && section !== '').join('\n\n');
+    if (!preview) {
+      return done;
+    }
+    return done ? `${done}\n\n${preview}` : preview;
+  }
+
+  cancelTextTask(): void {
+    void this.api.cancelText();
+    this.llmAbort?.abort();
+  }
+
+  async copyLlmOutput(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.llmOutput());
+      this.llmStatus.set('Ergebnis kopiert.');
+    } catch {
+      this.llmStatus.set('Kopieren nicht möglich – Text markieren und Strg+C drücken.');
+    }
+  }
+
+  saveLlmTxt(): void {
+    this.saveFile(this.llmOutput(), 'textergebnis.txt', 'text/plain;charset=utf-8');
   }
 
   // ------------------------------------------------------------------ export

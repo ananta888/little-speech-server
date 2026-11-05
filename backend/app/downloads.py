@@ -36,7 +36,12 @@ class DownloadManager:
         return self._start(model_id, lambda task: self._run_vosk(task, model_id, url))
 
     def start_whisper(self, model_id: str, hf_id: str) -> Task:
-        return self._start(f"whisper:{model_id}", lambda task: self._run_whisper(task, model_id, hf_id))
+        return self._start(f"whisper:{model_id}",
+                           lambda task: self._run_hf(task, hf_id, self.settings.models_dir / "whisper" / model_id))
+
+    def start_llm(self, model_id: str, hf_id: str) -> Task:
+        return self._start(f"llm:{model_id}",
+                           lambda task: self._run_hf(task, hf_id, self.settings.models_dir / "llm" / model_id))
 
     def _start(self, key: str, runner) -> Task:
         with self._lock:
@@ -96,10 +101,9 @@ class DownloadManager:
             archive.extractall(self.settings.models_dir)
         target.unlink(missing_ok=True)
 
-    def _run_whisper(self, task: Task, model_id: str, hf_id: str) -> None:
+    def _run_hf(self, task: Task, hf_id: str, local: Path) -> None:
         from huggingface_hub import snapshot_download
 
-        local = self.settings.models_dir / "whisper" / model_id
         local.mkdir(parents=True, exist_ok=True)
         snapshot_download(hf_id, local_dir=str(local))
         task.total = None

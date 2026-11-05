@@ -197,3 +197,95 @@ def test_import_archive_roundtrip_and_zip_slip():
             "/api/models/delete", json={"engine": "vosk", "id": "vosk-model-test-import"}
         )
         assert response.status_code == 200, response.text
+
+
+# ------------------------------------------------------------------ Textdienst
+
+
+def test_text_status_and_llm_catalog_entries():
+    with TestClient(app) as client:
+        status = client.get("/api/text/status")
+        assert status.status_code == 200
+        body = status.json()
+        assert body["loaded"] is None
+        assert body["busy"] is False
+        ids = [entry["id"] for entry in body["models"]]
+        assert ids == ["qwen3-0.6b", "qwen3-1.7b"]
+        assert all(entry["name"] and entry["size"] for entry in body["models"])
+        # Verfügbarkeit = lokaler Download unter models/llm/<id>
+        assert all(isinstance(entry["available"], bool) for entry in body["models"])
+
+        models = client.get("/api/models").json()
+        assert [entry["id"] for entry in models["llm"]] == ids
+        assert all(entry["engine"] == "llm" and entry["kind"] == "text" for entry in models["llm"])
+        assert models["llm"][1]["note"]  # 1.7B verlangt die GPU
+
+        health = client.get("/api/health").json()
+        assert "text_loaded" in health
+
+
+def test_text_unknown_model_and_task_rejected():
+    with TestClient(app) as client:
+        assert client.post("/api/downloads/llm/gpt-9").status_code == 404
+        unknown = client.post(
+            "/api/text", json={"text": "Hallo", "task": "summary", "model": "gpt-9"}
+        )
+        assert unknown.status_code == 404
+        bad_task = client.post(
+            "/api/text", json={"text": "Hallo", "task": "übersetzen", "model": "qwen3-0.6b"}
+        )
+        assert bad_task.status_code == 422
+        empty = client.post(
+            "/api/text", json={"text": "", "task": "summary", "model": "qwen3-0.6b"}
+        )
+        assert empty.status_code == 422
+
+
+def test_text_task_stream_error_releases_lock():
+    # Leertext scheitert vor dem Modell-Loading – Fehler als Event, kein "done".
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/text", json={"text": "   ", "task": "summary", "model": "qwen3-0.6b"}
+        )
+        assert response.status_code == 200, response.text
+        events = [json.loads(line) for line in response.text.splitlines() if line.strip()]
+        assert [event["type"] for event in events] == ["error"]
+        assert "Text eingeben" in events[0]["message"]
+        assert client.get("/api/text/status").json()["busy"] is False
+
+
+def test_text_second_task_conflicts_while_busy():
+    from app.text_service import get_text_service
+
+    service = get_text_service()
+    with TestClient(app) as client:
+        assert service.begin()
+        try:
+            response = client.post(
+                "/api/text", json={"text": "Hallo", "task": "summary", "model": "qwen3-0.6b"}
+            )
+            assert response.status_code == 409
+            assert "bereits eine Textaufgabe" in response.json()["detail"]
+        finally:
+            service.end()
+        assert client.get("/api/text/status").json()["busy"] is False
+
+
+def test_text_cancel_and_unload_without_task():
+    with TestClient(app) as client:
+        assert client.post("/api/text/cancel").json() == {"ok": True}
+        assert client.post("/api/text/unload").json() == {"unloaded": False}
+
+
+def test_token_sections_keeps_text_intact():
+    from app.text_service import token_sections
+
+    class FakeTokenizer:
+        def __call__(self, text, add_special_tokens=False):
+            return type("Encoded", (), {"input_ids": text.split()})()
+
+    text = " ".join(f"wort{i}" for i in range(250))
+    sections = token_sections(FakeTokenizer(), text, limit=40)
+    assert len(sections) >= 2
+    assert "".join(sections) == text, "Abschnitte müssen den Text verlustfrei zusammensetzen"
+    assert all(0 < len(section.split()) <= 40 for section in sections)

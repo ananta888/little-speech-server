@@ -128,3 +128,37 @@ def build_recasepunc_entry(settings: Settings, statuses: dict) -> ModelEntry:
         url=(model or {}).get("url"),
         note="Post-Processing-Modell (BERT); liefert Text mit Satzzeichen und Großschreibung.",
     )
+
+
+def llm_dir(settings: Settings, model_id: str) -> Path:
+    return settings.models_dir / "llm" / model_id
+
+
+def llm_available(settings: Settings, model_id: str) -> bool:
+    return (llm_dir(settings, model_id) / "config.json").is_file()
+
+
+def build_llm_entries(settings: Settings, statuses: dict) -> list[ModelEntry]:
+    from .text_service import TEXT_MODELS
+
+    entries = []
+    for model_id, info in TEXT_MODELS.items():
+        status = statuses.get(f"llm:{model_id}", {})
+        entries.append(ModelEntry(
+            id=model_id,
+            engine="llm",
+            name=info["name"],
+            language="Mehrsprachig",
+            size=info["size"],
+            bytes=info["bytes"],
+            license="Apache 2.0 (Qwen3)",
+            kind="text",
+            available=llm_available(settings, model_id),
+            downloading=status.get("status") == "downloading",
+            downloaded=status.get("downloaded"),
+            download_total=status.get("total"),
+            percent=status.get("percent"),
+            error=status.get("error"),
+            note=("Benötigt die GPU" if info["min_device"] == "cuda" else None),
+        ))
+    return entries

@@ -40,7 +40,7 @@ class PostprocessResponse(BaseModel):
 
 class ModelEntry(BaseModel):
     id: str
-    engine: Literal["vosk", "whisper", "recasepunc"]
+    engine: Literal["vosk", "whisper", "recasepunc", "llm"]
     name: str
     language: str | None = None
     size: str | None = None
@@ -61,6 +61,7 @@ class ModelsResponse(BaseModel):
     vosk: list[ModelEntry]
     whisper: list[ModelEntry]
     recasepunc: ModelEntry
+    llm: list[ModelEntry]
     device: str
     models_dir: str
 
@@ -82,6 +83,7 @@ class HealthResponse(BaseModel):
     vosk_loaded: str | None = None
     whisper_loaded: str | None = None
     recasepunc_loaded: bool = False
+    text_loaded: str | None = None
     ffmpeg: bool = False
 
 
@@ -97,10 +99,16 @@ class DeviceResponse(BaseModel):
 
 
 class DeleteModelRequest(BaseModel):
-    engine: Literal["vosk", "whisper", "recasepunc"]
+    engine: Literal["vosk", "whisper", "recasepunc", "llm"]
     id: str = Field(min_length=1, max_length=200)
 
 
 class DeleteModelResponse(BaseModel):
     deleted: str
     unloaded: bool
+
+
+class TextTaskRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=2_000_000)
+    task: Literal["summary", "bullets", "tasks", "cleanup"]
+    model: str = Field(min_length=1, max_length=100)

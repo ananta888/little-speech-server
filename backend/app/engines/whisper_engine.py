@@ -62,6 +62,9 @@ class WhisperEngine:
                 return self._model
             from faster_whisper import WhisperModel
 
+            from ..text_service import get_text_service
+
+            get_text_service().unload()
             device = runtime.resolve_device()
             compute_type = "int8_float16" if device == "cuda" else "int8"
             local = whisper_dir(self.settings, model_id)

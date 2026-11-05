@@ -113,6 +113,18 @@ export class ApiService {
     return result.text;
   }
 
+  downloadLlm(modelId: string): Promise<unknown> {
+    return firstValueFrom(this.http.post(`/api/downloads/llm/${modelId}`, {}));
+  }
+
+  unloadText(): Promise<{ unloaded: boolean }> {
+    return firstValueFrom(this.http.post<{ unloaded: boolean }>('/api/text/unload', {}));
+  }
+
+  cancelText(): Promise<unknown> {
+    return firstValueFrom(this.http.post('/api/text/cancel', {}));
+  }
+
   async errorText(error: unknown): Promise<string> {
     if (error && typeof error === 'object' && 'error' in error) {
       const inner = (error as { error?: unknown }).error;

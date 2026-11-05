@@ -67,6 +67,9 @@ class VoskEngine:
             if not vosk_available(self.settings, model_id):
                 raise ModelNotAvailable(f"Vosk-Modell {model_id} ist nicht geladen. "
                                         f"Bitte zuerst im Modellbereich herunterladen (erwartet: {directory}).")
+            from ..text_service import get_text_service
+
+            get_text_service().unload()
             import vosk
 
             vosk.SetLogLevel(-1)
